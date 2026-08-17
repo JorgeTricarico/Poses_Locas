@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Poses Locas Android</title>
+    <link rel="manifest" href="manifest.json">
+    <link rel="stylesheet" href="style.css">
+    <!-- MediaPipe Pose -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Start Screen -->
+        <div id="start-screen" class="screen active">
+            <div style="background: rgba(0, 212, 255, 0.2); padding: 10px 20px; border-radius: 20px; margin-bottom: 20px; text-align: center; border: 1px solid rgba(0,212,255,0.5);">
+                💡 <b>Tip:</b> Usa "Transmitir" o "Smart View" desde el menú de tu celular para enviarlo a tu Android TV/Chromecast.
+            </div>
+            
+            <h1>Poses Locas</h1>
+            <p>Versión Móvil</p>
+
+            <button id="start-btn">JUGAR</button>
+            <button id="config-btn" style="background-color: #ffb703; margin-top: 15px; font-size: 1.2rem; color: #000;">⚙️ Configuración</button>
+        </div>
+
+        <!-- Config Modal -->
+        <div id="config-modal" class="screen" style="background: rgba(0,0,0,0.95); z-index: 20; padding: 20px; overflow-y: auto; justify-content: flex-start; padding-top: 50px;">
+            <h2 style="color: #00d4ff; font-size: 2.5rem; margin-bottom: 20px; text-align: center;">⚙️ Ajustes</h2>
+            
+            <div class="config-section">
+                <h3>Música de fondo</h3>
+                <div class="song-list">
+                    <div class="song-btn active" data-song="macarena.wav">Macarena</div>
+                    <div class="song-btn" data-song="asereje.wav">Aserejé</div>
+                    <div class="song-btn" data-song="danza_kuduro.wav">Danza Kuduro</div>
+                    <div class="song-btn" data-song="despacito.wav">Despacito</div>
+                    <div class="song-btn" data-song="waka_waka.wav">Waka Waka</div>
+                    <div class="song-btn" data-song="ymca.wav">YMCA</div>
+                    <div class="song-btn" data-song="none">Sin Música</div>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3>Dificultad (Tiempo por pose)</h3>
+                <div class="btn-group" id="diff-group">
+                    <button class="opt-btn" data-val="8">Fácil</button>
+                    <button class="opt-btn active" data-val="6">Normal</button>
+                    <button class="opt-btn" data-val="4">Difícil</button>
+                </div>
+            </div>
+
+            <div class="config-section">
+                <h3>Modo de Juego</h3>
+                <div class="btn-group" id="mode-group">
+                    <button class="opt-btn active" data-val="arcade">Arcade</button>
+                    <button class="opt-btn" data-val="practice">Práctica</button>
+                </div>
+            </div>
+
+            <button id="close-config-btn" style="margin-top: 10px; margin-bottom: 50px;">Volver</button>
+        </div>
+
+        <!-- Game Screen -->
+        <div id="game-screen" class="screen">
+            <div id="video-container">
+                <video id="input-video" playsinline></video>
+                <canvas id="output-canvas"></canvas>
+            </div>
+            
+            <div id="pause-overlay" style="display: none; position: absolute; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index: 10; flex-direction: column; justify-content: center; align-items: center; pointer-events: none;">
+                <h1 style="color: white; font-size: 4rem;">PAUSA</h1>
+                <p style="font-size: 1.5rem;">Toca la pantalla para continuar</p>
+                <button id="exit-btn" style="margin-top: 30px; background-color: #ff0000; pointer-events: all;">Salir al Menú</button>
+            </div>
+            
+            <div id="ui-layer">
+                <div class="header">
+                    <div class="score-board">Puntos: <span id="score">0</span></div>
+                    <div class="timer-board">Tiempo: <span id="timer">0</span>s</div>
+                </div>
+                
+                <div id="pose-instruction" class="instruction">
+                    ¡Prepárate!
+                </div>
+
+                <div id="progress-container">
+                    <div id="progress-bar"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="game.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js')
+            .then(reg => console.log('Service Worker registrado:', reg.scope))
+            .catch(err => console.log('Error al registrar SW:', err));
+        }
+    </script>
+</body>
+</html>
