@@ -97,16 +97,16 @@ RIGHT_ARM_CONNECTIONS = [(R_SHOULDER, R_ELBOW), (R_ELBOW, R_WRIST)]
 # =============================================
 # CHECKS (ESTÁTICOS)
 # =============================================
-def check_left_arm_up(lm): return lm[L_WRIST].y < lm[L_SHOULDER].y - 0.12
-def check_right_arm_up(lm): return lm[R_WRIST].y < lm[R_SHOULDER].y - 0.12
+def check_left_arm_up(lm): return lm[L_WRIST].y < lm[NOSE].y - 0.05
+def check_right_arm_up(lm): return lm[R_WRIST].y < lm[NOSE].y - 0.05
 def check_left_arm_down(lm): return lm[L_WRIST].y > lm[L_SHOULDER].y + 0.05
 def check_right_arm_down(lm): return lm[R_WRIST].y > lm[R_SHOULDER].y + 0.05
 def check_left_arm_horizontal(lm): return abs(lm[L_WRIST].y - lm[L_SHOULDER].y) < 0.12 and lm[L_WRIST].x < lm[L_SHOULDER].x - 0.08
 def check_right_arm_horizontal(lm): return abs(lm[R_WRIST].y - lm[R_SHOULDER].y) < 0.12 and lm[R_WRIST].x > lm[R_SHOULDER].x + 0.08
 def check_left_hand_on_hip(lm): return abs(lm[L_WRIST].x - lm[L_HIP].x) < 0.15 and abs(lm[L_WRIST].y - lm[L_HIP].y) < 0.15
 def check_right_hand_on_hip(lm): return abs(lm[R_WRIST].x - lm[R_HIP].x) < 0.15 and abs(lm[R_WRIST].y - lm[R_HIP].y) < 0.15
-def check_left_hand_on_head(lm): return abs(lm[L_WRIST].x - lm[NOSE].x) < 0.15 and abs(lm[L_WRIST].y - lm[NOSE].y) < 0.15
-def check_right_hand_on_head(lm): return abs(lm[R_WRIST].x - lm[NOSE].x) < 0.15 and abs(lm[R_WRIST].y - lm[NOSE].y) < 0.15
+def check_left_hand_on_head(lm): return abs(lm[L_WRIST].x - lm[NOSE].x) < 0.10 and abs(lm[L_WRIST].y - lm[NOSE].y) < 0.10
+def check_right_hand_on_head(lm): return abs(lm[R_WRIST].x - lm[NOSE].x) < 0.10 and abs(lm[R_WRIST].y - lm[NOSE].y) < 0.10
 def check_left_bicep(lm): return abs(lm[L_WRIST].x - lm[L_SHOULDER].x) < 0.10 and abs(lm[L_WRIST].y - lm[L_SHOULDER].y) < 0.15 and lm[L_ELBOW].x < lm[L_SHOULDER].x - 0.05
 def check_right_bicep(lm): return abs(lm[R_WRIST].x - lm[R_SHOULDER].x) < 0.10 and abs(lm[R_WRIST].y - lm[R_SHOULDER].y) < 0.15 and lm[R_ELBOW].x > lm[R_SHOULDER].x + 0.05
 def check_right_salute(lm): return abs(lm[R_WRIST].x - lm[R_EAR].x) < 0.10 and abs(lm[R_WRIST].y - lm[R_EAR].y) < 0.10
@@ -186,7 +186,7 @@ def check_squat(state, lm):
         state.center_y = hip_y
     else:
         if state.jump_phase == 0:
-            state.center_y = state.center_y * 0.95 + hip_y * 0.05
+            state.center_y = state.center_y * 0.995 + hip_y * 0.005
             
     threshold = 0.12
     
@@ -517,6 +517,12 @@ def get_next_pose(current_pose, mode, song, coreo_idx):
 # =============================================
 # MAIN LOOP
 # =============================================
+def log_metric(mode, pose_name, time_taken, status):
+    try:
+        with open('metrics.csv', 'a') as f:
+            f.write(f"{time.time()},{mode},{pose_name},{time_taken:.3f},{status}\n")
+    except Exception as e:
+        print(f"Error logging metric: {e}")
 def main():
     cap = VideoCaptureAsync(0)
     if not cap.is_opened():
@@ -532,6 +538,11 @@ def main():
     WINDOW_NAME = "Poses Locas AR"
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
     cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+    # Optimizaciones: pre-asignar overlays pesados para evitar lag de recolección de basura
+    fever_overlay = np.full((display_h, display_w, 3), (255, 0, 255), dtype=np.uint8)
+    green_overlay = np.full((display_h, display_w, 3), (0, 255, 0), dtype=np.uint8)
+    black_overlay = np.full((display_h, display_w, 3), (0, 0, 0), dtype=np.uint8)
 
     menu_options = []
     sfx_files = {'success.wav', 'success_new.wav', 'fail.wav', 'punch.wav', 'punch_new.wav', 'music.wav'}
@@ -560,6 +571,7 @@ def main():
     current_song = menu_options[selected_idx]['file']
     coreo_idx = 0
     current_pose = random.choice(POSES)
+    pose_start_time = time.time()
     match_start = None
     match_required = 0.6
     
@@ -604,7 +616,9 @@ def main():
                         play_sound(snd_fail)
                         fever_gauge = max(0, fever_gauge - 25)
                         shake_time = current_time
+                        log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'SKIPPED')
                         current_pose, coreo_idx = get_next_pose(current_pose, current_mode, current_song, coreo_idx)
+                        pose_start_time = current_time
                         control_gesture_start, match_start, streak = None, None, 0
                         state.reset()
                 else:
@@ -644,7 +658,9 @@ def main():
                             
                             show_success_flash = True
                             success_flash_time = current_time
+                            log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'COMPLETED')
                             current_pose, coreo_idx = get_next_pose(current_pose, current_mode, current_song, coreo_idx)
+                            pose_start_time = current_time
                             state.reset()
                     else:
                         left_ok = current_pose['checks']['left_arm'](lm)
@@ -678,7 +694,9 @@ def main():
                                 
                                 show_success_flash = True
                                 success_flash_time = current_time
+                                log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'COMPLETED')
                                 current_pose, coreo_idx = get_next_pose(current_pose, current_mode, current_song, coreo_idx)
+                                pose_start_time = current_time
                                 match_start = None
                                 state.reset()
                         else:
@@ -720,9 +738,7 @@ def main():
             floating_texts.update_and_draw(frame)
             
             if show_success_flash and current_time - success_flash_time < 0.3:
-                overlay = frame.copy()
-                cv2.rectangle(overlay, (0, 0), (display_w, display_h), (0, 255, 0), -1)
-                cv2.addWeighted(overlay, 0.15, frame, 0.85, 0, frame)
+                cv2.addWeighted(green_overlay, 0.15, frame, 0.85, 0, frame)
             elif show_success_flash: show_success_flash = False
             
         # FEVER Y SCREEN SHAKE EFFECT
@@ -732,7 +748,6 @@ def main():
                 fever_gauge = 0
                 multiplier = 1
             else:
-                fever_overlay = np.full((display_h, display_w, 3), (255, 0, 255), dtype=np.uint8)
                 cv2.addWeighted(fever_overlay, 0.2, frame, 0.8, 0, frame)
                 
         if current_time - shake_time < 0.3:
@@ -746,9 +761,7 @@ def main():
         # DIBUJAR MENU POR ENCIMA SI ESTÁ ACTIVO
         # ==================================
         if show_menu:
-            overlay = frame.copy()
-            cv2.rectangle(overlay, (0, 0), (display_w, display_h), (0, 0, 0), -1)
-            cv2.addWeighted(overlay, 0.8, frame, 0.2, 0, frame)
+            cv2.addWeighted(black_overlay, 0.8, frame, 0.2, 0, frame)
             
             cv2.putText(frame, "MENU DE CONFIGURACION", (display_w//2 - 350, 150), cv2.FONT_HERSHEY_DUPLEX, 1.8, (0, 255, 255), 3)
             
@@ -782,7 +795,9 @@ def main():
                 play_sound(snd_fail)
                 fever_gauge = max(0, fever_gauge - 25)
                 shake_time = current_time
+                log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'SKIPPED')
                 current_pose, coreo_idx = get_next_pose(current_pose, current_mode, current_song, coreo_idx)
+                pose_start_time = current_time
                 control_gesture_start, match_start, streak = None, None, 0
                 state.reset()
             
