@@ -128,6 +128,7 @@ class PlayerState:
         self.last_arm_pos = None
         self.move_hits = 0
         self.last_move_pos = None
+        self.freeze_reference = None
         self.initial_shoulder_order = None
         self.spin_start_time = 0
 
@@ -507,12 +508,18 @@ COREOGRAFIAS['macarena_real.wav'] = COREOGRAFIAS['macarena.wav']
 COREOGRAFIAS['macarena_vocal.wav'] = COREOGRAFIAS['macarena.wav']
 
 # =============================================
-def get_next_pose(current_pose, mode, song, coreo_idx):
+def shift_queue(pose_queue, mode, song, coreo_idx):
+    pose_queue.pop(0)
     if mode == 'COREO' and song in COREOGRAFIAS:
         coreo_idx = (coreo_idx + 1) % len(COREOGRAFIAS[song])
-        return COREOGRAFIAS[song][coreo_idx], coreo_idx
+        p = COREOGRAFIAS[song][coreo_idx]
     else:
-        return random.choice([p for p in POSES if p['name'] != current_pose['name']]), coreo_idx
+        if random.random() < 0.15 and (not pose_queue or pose_queue[-1].get('name') != 'CONGELADOS!'):
+            p = {'name': 'CONGELADOS!', 'color': (255, 100, 100), 'is_freeze': True}
+        else:
+            p = random.choice([x for x in POSES if not pose_queue or x['name'] != pose_queue[-1]['name']])
+    pose_queue.append(p)
+    return pose_queue[0], coreo_idx
 
 # =============================================
 # MAIN LOOP
@@ -569,12 +576,20 @@ def main():
     multiplier = 1
     current_mode = 'LIBRE'
     current_song = menu_options[selected_idx]['file']
-    coreo_idx = 0
-    current_pose = random.choice(POSES)
-    pose_start_time = time.time()
+    coreo_idx = -1
+    pose_queue = []
+    for _ in range(5):
+        if current_mode == 'COREO' and current_song in COREOGRAFIAS:
+            coreo_idx = (coreo_idx + 1) % len(COREOGRAFIAS[current_song])
+            p = COREOGRAFIAS[current_song][coreo_idx]
+        else:
+            p = random.choice([x for x in POSES if not pose_queue or x['name'] != pose_queue[-1]['name']])
+        pose_queue.append(p)
+    current_pose = pose_queue[0]
     match_start = None
     match_required = 0.6
     
+    pose_start_time = time.time()
     control_gesture_start = None
     control_gesture_required = 1.0
     
@@ -617,14 +632,62 @@ def main():
                         fever_gauge = max(0, fever_gauge - 25)
                         shake_time = current_time
                         log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'SKIPPED')
-                        current_pose, coreo_idx = get_next_pose(current_pose, current_mode, current_song, coreo_idx)
+                        current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
                         pose_start_time = current_time
                         control_gesture_start, match_start, streak = None, None, 0
                         state.reset()
                 else:
                     control_gesture_start = None
                     
-                    if current_pose.get('dynamic'):
+                    if current_pose.get('is_freeze'):
+                        left_ok, right_ok = True, True # Skeleton OK color
+                        if match_start is None:
+                            match_start = current_time
+                            state.freeze_reference = [{"x": lm[kp].x, "y": lm[kp].y} for kp in [NOSE, L_WRIST, R_WRIST, L_HIP, R_HIP]]
+                        
+                        movement = 0
+                        if state.freeze_reference:
+                            for i, kp in enumerate([NOSE, L_WRIST, R_WRIST, L_HIP, R_HIP]):
+                                dx = lm[kp].x - state.freeze_reference[i]["x"]
+                                dy = lm[kp].y - state.freeze_reference[i]["y"]
+                                movement += (dx*dx + dy*dy)**0.5
+                                
+                        time_left = max(0, 3.0 - (current_time - match_start))
+                        cv2.putText(frame, f"CONGELADOS! {time_left:.1f}s", (display_w//2 - 250, display_h//2), cv2.FONT_HERSHEY_DUPLEX, 1.5, (255, 255, 0), 4)
+                        
+                        if movement > 0.20: # Umbral de movimiento
+                            floating_texts.add("¡TE MOVISTE!", 50, 400, (0, 0, 255), 2.0)
+                            play_sound(snd_fail)
+                            fever_gauge = max(0, fever_gauge - 50)
+                            shake_time = current_time
+                            streak = 0
+                            log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'FAILED')
+                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
+                            pose_start_time = current_time
+                            match_start = None
+                            state.reset()
+                        elif time_left <= 0:
+                            multiplier = 3 if fever_active else (1 + int(streak // 3))
+                            points = int(1000 * multiplier)
+                            score += points
+                            poses_completed += 1
+                            streak += 1
+                            if not fever_active:
+                                fever_gauge = min(100, fever_gauge + 15)
+                                if fever_gauge >= 100:
+                                    fever_active = True
+                                    fever_start_time = current_time
+                                    floating_texts.add("FEVER TIME!", display_w//2 - 150, display_h//2, (0, 255, 255), 3.0)
+                            particles.emit(display_w // 2, display_h // 2, (255, 255, 255), 50)
+                            floating_texts.add(f"¡SOBREVIVISTE! +{points}", 50, 400, (255, 255, 255), 2.0)
+                            play_sound(snd_success)
+                            log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'COMPLETED')
+                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
+                            pose_start_time = current_time
+                            match_start = None
+                            state.reset()
+                            
+                    elif current_pose.get('dynamic'):
                         completed, events = current_pose['checks'](state, lm)
                         left_ok, right_ok = True, True  # Coloring skeleton OK
                         
@@ -659,7 +722,7 @@ def main():
                             show_success_flash = True
                             success_flash_time = current_time
                             log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'COMPLETED')
-                            current_pose, coreo_idx = get_next_pose(current_pose, current_mode, current_song, coreo_idx)
+                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
                             pose_start_time = current_time
                             state.reset()
                     else:
@@ -695,7 +758,7 @@ def main():
                                 show_success_flash = True
                                 success_flash_time = current_time
                                 log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'COMPLETED')
-                                current_pose, coreo_idx = get_next_pose(current_pose, current_mode, current_song, coreo_idx)
+                                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
                                 pose_start_time = current_time
                                 match_start = None
                                 state.reset()
@@ -719,10 +782,32 @@ def main():
             
             # UI GLOBAL
             draw_reference(frame, current_pose, display_w - 220, 20, 200, 220)
-            pose_text = current_pose['name']
-            text_x = (display_w - cv2.getTextSize(pose_text, cv2.FONT_HERSHEY_DUPLEX, 2, 4)[0][0]) // 2
-            cv2.putText(frame, pose_text, (text_x + 3, 73), cv2.FONT_HERSHEY_DUPLEX, 2, (0, 0, 0), 6)
-            cv2.putText(frame, pose_text, (text_x, 70), cv2.FONT_HERSHEY_DUPLEX, 2, current_pose['color'], 4)
+            
+            # --- CARRIL INFERIOR DE PICTOGRAMAS ---
+            lane_y = display_h - 80
+            cv2.rectangle(frame, (0, lane_y), (display_w, display_h), (20, 20, 20), -1)
+            cv2.rectangle(frame, (0, lane_y), (display_w, lane_y+3), (255, 255, 255), -1)
+            
+            receptor_x, receptor_w = 20, 180
+            cv2.rectangle(frame, (receptor_x, lane_y + 10), (receptor_x + receptor_w, display_h - 10), (0, 255, 255), 3)
+            cv2.putText(frame, "AHORA!", (receptor_x + 5, lane_y - 5), cv2.FONT_HERSHEY_DUPLEX, 0.6, (0, 255, 255), 1)
+            
+            for i, p in enumerate(pose_queue):
+                card_x = receptor_x + i * 190
+                if card_x > display_w: break
+                bg_color = (150, 0, 150) if i == 0 else (60, 60, 60)
+                text_color = (0, 255, 255) if i == 0 else (200, 200, 200)
+                
+                cv2.rectangle(frame, (card_x, lane_y + 10), (card_x + 180, display_h - 10), bg_color, -1)
+                cv2.rectangle(frame, (card_x, lane_y + 10), (card_x + 180, display_h - 10), text_color, 1)
+                
+                words = p['name'].split()
+                if len(words) >= 2:
+                    cv2.putText(frame, " ".join(words[:2]), (card_x + 10, lane_y + 35), cv2.FONT_HERSHEY_DUPLEX, 0.5, text_color, 1)
+                    cv2.putText(frame, " ".join(words[2:]), (card_x + 10, lane_y + 60), cv2.FONT_HERSHEY_DUPLEX, 0.5, text_color, 1)
+                else:
+                    cv2.putText(frame, p['name'], (card_x + 10, lane_y + 45), cv2.FONT_HERSHEY_DUPLEX, 0.6, text_color, 1)
+            # --------------------------------------
             
             cv2.putText(frame, f"PUNTAJE: {score}", (30, 60), cv2.FONT_HERSHEY_DUPLEX, 1.5, (0, 0, 0), 8)
             cv2.putText(frame, f"PUNTAJE: {score}", (30, 60), cv2.FONT_HERSHEY_DUPLEX, 1.5, (0, 255, 255), 3)
@@ -796,7 +881,7 @@ def main():
                 fever_gauge = max(0, fever_gauge - 25)
                 shake_time = current_time
                 log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'SKIPPED')
-                current_pose, coreo_idx = get_next_pose(current_pose, current_mode, current_song, coreo_idx)
+                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
                 pose_start_time = current_time
                 control_gesture_start, match_start, streak = None, None, 0
                 state.reset()
@@ -808,18 +893,26 @@ def main():
                 selected_idx = min(len(menu_options) - 1, selected_idx + 1)
             elif key == 13 or key == 32: # Enter or Space
                 show_menu = False
-                if HAS_AUDIO and menu_options[selected_idx]['file'] != "Sin Musica":
-                    current_song = menu_options[selected_idx]['file']
-                    current_mode = menu_options[selected_idx]['type']
-                    coreo_idx = 0
-                    if current_mode == 'COREO':
-                        current_pose = COREOGRAFIAS[current_song][0]
+                current_song = menu_options[selected_idx]['file']
+                current_mode = menu_options[selected_idx]['type']
+                
+                coreo_idx = -1
+                pose_queue = []
+                for _ in range(5):
+                    if current_mode == 'COREO' and current_song in COREOGRAFIAS:
+                        coreo_idx = (coreo_idx + 1) % len(COREOGRAFIAS[current_song])
+                        p = COREOGRAFIAS[current_song][coreo_idx]
                     else:
-                        current_pose = random.choice(POSES)
-                        
-                    # USER_REQ: Canciones infinitas
-                    pygame.mixer.music.load(current_song)
-                    pygame.mixer.music.play(-1) # -1 significa loop infinito
+                        p = random.choice([x for x in POSES if not pose_queue or x['name'] != pose_queue[-1]['name']])
+                    pose_queue.append(p)
+                current_pose = pose_queue[0]
+                
+                if HAS_AUDIO:
+                    if current_song == "Sin Musica":
+                        pygame.mixer.music.stop()
+                    else:
+                        pygame.mixer.music.load(current_song)
+                        pygame.mixer.music.play(-1)
                     pygame.mixer.music.set_volume(0.4)
                     
         # USER_REQ: Forzar bucle infinito. Si pygame frena la música por algún bug, la obligamos a arrancar de nuevo.
