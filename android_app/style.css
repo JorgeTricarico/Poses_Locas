@@ -193,60 +193,156 @@ button:active {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    padding: 20px;
+    padding: 16px;
     pointer-events: none;
 }
 
 .header {
     display: flex;
     justify-content: space-between;
+    align-items: flex-start;
     width: 100%;
-    font-size: 1.5rem;
+    font-size: 1.2rem;
     font-weight: 700;
     text-shadow: 0 2px 5px rgba(0,0,0,0.8);
+    gap: 12px;
+}
+
+.header-left, .header-right {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .score-board, .timer-board {
-    background: rgba(0,0,0,0.5);
-    padding: 10px 20px;
-    border-radius: 20px;
+    background: rgba(12, 10, 25, 0.70);
+    padding: 8px 18px;
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.20);
+    font-size: 1.25rem;
+    color: #fff;
+}
+
+.combo-pill {
+    background: rgba(255, 183, 3, 0.25);
+    border: 1px solid #ffb703;
+    color: #ffdd00;
+    padding: 4px 12px;
+    border-radius: 12px;
+    font-size: 0.95rem;
+    font-weight: 900;
+    text-align: center;
     backdrop-filter: blur(5px);
 }
 
+.fever-bar-wrap {
+    width: 130px;
+    height: 10px;
+    background: rgba(0,0,0,0.6);
+    border-radius: 6px;
+    border: 1px solid rgba(255, 71, 126, 0.4);
+    overflow: hidden;
+}
+
+#fever-bar {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, #ff477e, #00d4ff);
+    transition: width 0.2s ease-out;
+}
+
+/* TOP PILL INSTRUCTION - NUNCA BLOQUEA EL CENTRO */
 .instruction {
-    font-size: 3rem;
+    font-size: clamp(1.4rem, 3.5vw, 2.5rem);
     font-weight: 900;
     text-align: center;
-    text-shadow: 0 4px 10px rgba(0,0,0,0.8);
-    background: rgba(0,0,0,0.4);
-    padding: 20px;
-    border-radius: 20px;
-    backdrop-filter: blur(5px);
-    margin: auto 0;
+    text-shadow: 0 4px 10px rgba(0,0,0,0.9);
+    background: rgba(12, 10, 26, 0.75);
+    padding: 10px 28px;
+    border-radius: 999px;
+    border: 2px solid rgba(0, 212, 255, 0.40);
+    backdrop-filter: blur(10px);
+    align-self: center;
+    margin-top: 6px;
+    margin-bottom: 0;
     color: var(--secondary);
     animation: pulse 1s infinite alternate;
 }
 
 @keyframes pulse {
     0% { transform: scale(1); }
-    100% { transform: scale(1.05); }
+    100% { transform: scale(1.03); }
+}
+
+/* ESPACIADOR CENTRAL LIBRE PARA LA ZONA SEGURA DEL JUGADOR */
+.center-spacer {
+    flex: 1;
+    min-height: 120px;
+    pointer-events: none;
+}
+
+/* GRUPO INFERIOR */
+.bottom-hud-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* QUEUE STRIP DE PRÓXIMAS POSES */
+.queue-strip {
+    display: flex;
+    gap: 8px;
+    justify-content: center;
+    align-items: center;
+    overflow-x: auto;
+    padding: 6px 10px;
+    background: rgba(12, 10, 26, 0.65);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    backdrop-filter: blur(8px);
+}
+
+.queue-card {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    font-size: 0.85rem;
+    font-weight: 700;
+    white-space: nowrap;
+    opacity: 0.65;
+    transition: all 0.2s ease;
+}
+
+.queue-card.active {
+    background: rgba(0, 212, 255, 0.25);
+    border-color: #00d4ff;
+    opacity: 1.0;
+    transform: scale(1.05);
+    box-shadow: 0 0 12px rgba(0, 212, 255, 0.4);
 }
 
 #progress-container {
     width: 100%;
-    height: 30px;
-    background: rgba(0,0,0,0.5);
-    border-radius: 15px;
-    margin-bottom: 20px;
+    height: 20px;
+    background: rgba(12, 10, 26, 0.70);
+    border-radius: 10px;
     overflow: hidden;
-    backdrop-filter: blur(5px);
-    border: 2px solid rgba(255,255,255,0.2);
+    backdrop-filter: blur(6px);
+    border: 2px solid rgba(255,255,255,0.25);
 }
 
 #progress-bar {
     height: 100%;
     width: 0%;
-    background: linear-gradient(90deg, #ffb703, #ff477e);
-    border-radius: 15px;
-    transition: width 0.1s linear;
+    background: linear-gradient(90deg, #ffb703, #00ff64);
+    border-radius: 10px;
+    transition: width 0.08s linear;
 }

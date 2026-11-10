@@ -57,6 +57,7 @@
                 <h3>Modo de Juego</h3>
                 <div class="btn-group" id="mode-group">
                     <button class="opt-btn active" data-val="arcade">Arcade</button>
+                    <button class="opt-btn" data-val="coreo">Coreografía</button>
                     <button class="opt-btn" data-val="practice">Práctica</button>
                 </div>
             </div>
@@ -79,16 +80,31 @@
             
             <div id="ui-layer">
                 <div class="header">
-                    <div class="score-board">Puntos: <span id="score">0</span></div>
-                    <div class="timer-board">Tiempo: <span id="timer">0</span>s</div>
+                    <div class="header-left">
+                        <div class="score-board">Puntos: <span id="score">0</span></div>
+                        <div class="combo-pill" id="combo-pill">🔥 Combo x1</div>
+                    </div>
+                    <div class="header-right">
+                        <div class="timer-board">Tiempo: <span id="timer">0.0s</span></div>
+                        <div class="fever-bar-wrap" title="Medidor Fever"><div id="fever-bar"></div></div>
+                    </div>
                 </div>
                 
                 <div id="pose-instruction" class="instruction">
                     ¡Prepárate!
                 </div>
 
-                <div id="progress-container">
-                    <div id="progress-bar"></div>
+                <!-- Zona Central 100% libre para el cuerpo del jugador -->
+                <div class="center-spacer"></div>
+
+                <!-- Barra de próxima pose y retención inferior -->
+                <div class="bottom-hud-group">
+                    <div id="queue-strip" class="queue-strip">
+                        <!-- Generado dinámicamente: Pose actual y siguientes 3 -->
+                    </div>
+                    <div id="progress-container">
+                        <div id="progress-bar"></div>
+                    </div>
                 </div>
             </div>
         </div>
