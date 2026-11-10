@@ -375,7 +375,6 @@ _last_lanes = []  # Historial de carriles recientes para evitar repetir
 
 def spawn_creature(display_w, display_h):
     """Crea una nueva criatura aleatoria, distribuida en carriles"""
-    global _last_lanes
     ctype = random.choice(CREATURE_TYPES)
     
     # Elegir carril evitando los últimos usados

@@ -7,6 +7,9 @@ import numpy as np
 import cv2
 import os
 
+os.environ.setdefault("SDL_VIDEODRIVER", "dummy")
+os.environ.setdefault("SDL_AUDIODRIVER", "dummy")
+
 # Mock MediaPipe para entorno headless/test
 mock_mp = types.ModuleType('mediapipe')
 mock_mp.solutions = types.ModuleType('solutions')
@@ -526,6 +529,21 @@ def run_visual_and_auditor_tests():
     assert_eq(total_violations, 0, f"Auditor detecto {total_violations} violaciones matematicas en layout")
     print("      -> 5 Compuertas Matematicas aprobadas con CERO violaciones!")
     print("      -> 5 Compuertas Matematicas aprobadas con CERO violaciones!")
+
+def test_anatomy_and_math():
+    run_anatomy_and_math_tests()
+
+def test_static_poses():
+    run_static_pose_tests()
+
+def test_dynamic_poses():
+    run_dynamic_pose_tests()
+
+def test_cognitive_and_profiles():
+    run_cognitive_and_profile_tests()
+
+def test_visual_and_auditor():
+    run_visual_and_auditor_tests()
 
 def run_all():
     print("==================================================")
