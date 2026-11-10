@@ -39,3 +39,8 @@ from .rendering import (
 )
 from .capture import MockVideoCapture, VideoCaptureAsync
 from .engine import shift_queue, get_dynamic_progress, log_metric
+from .features import (
+    FeatureFlags, FEATURES,
+    DuoModeManager, CustomGhostRenderer,
+    AudioReactiveEngine, PartyPlatformEngine
+)

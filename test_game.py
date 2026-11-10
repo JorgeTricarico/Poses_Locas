@@ -44,7 +44,9 @@ from poses_locas import (
     check_namaste_center, check_clock_arms_9_12, check_clock_arms_12_3,
     check_egyptian_left_up_right_down, check_gentle_sway,
     PROFILES, PROFILE_KEYS, get_poses_for_profile,
-    POSES, COREOGRAFIAS
+    POSES, COREOGRAFIAS,
+    FeatureFlags, FEATURES, DuoModeManager, CustomGhostRenderer,
+    AudioReactiveEngine, PartyPlatformEngine
 )
 from visual_ui_auditor import UILayoutAuditor
 
@@ -530,6 +532,93 @@ def run_visual_and_auditor_tests():
     print("      -> 5 Compuertas Matematicas aprobadas con CERO violaciones!")
     print("      -> 5 Compuertas Matematicas aprobadas con CERO violaciones!")
 
+def run_feature_and_toggles_tests():
+    print("[6/6] Probando Feature Flags, Modo Duo, Custom Ghost, Audio Reactivo y Salto Party...")
+
+    # 1. Verificar que por defecto TODOS los flags estan desactivados (False)
+    FEATURES.reset_all()
+    assert_eq(FEATURES.enable_duo_mode, False, "Duo mode desactivado por defecto")
+    assert_eq(FEATURES.enable_custom_ghost, False, "Custom ghost desactivado por defecto")
+    assert_eq(FEATURES.enable_reactive_audio, False, "Audio reactivo desactivado por defecto")
+    assert_eq(FEATURES.enable_party_platform, False, "Salto party desactivado por defecto")
+
+    # 2. Toggles funcionan bidireccionalmente
+    assert_eq(FEATURES.toggle_duo_mode(), True, "Toggle Duo a True")
+    assert_eq(FEATURES.toggle_duo_mode(), False, "Toggle Duo restaurado a False")
+
+    assert_eq(FEATURES.toggle_custom_ghost(), True, "Toggle Ghost a True")
+    assert_eq(FEATURES.toggle_custom_ghost(), False, "Toggle Ghost restaurado a False")
+
+    assert_eq(FEATURES.toggle_reactive_audio(), True, "Toggle Audio a True")
+    assert_eq(FEATURES.toggle_reactive_audio(), False, "Toggle Audio restaurado a False")
+
+    assert_eq(FEATURES.toggle_party_platform(), True, "Toggle Party a True")
+    assert_eq(FEATURES.toggle_party_platform(), False, "Toggle Party restaurado a False")
+
+    # 3. Test DuoModeManager
+    duo = DuoModeManager()
+    sk_p1 = make_base_skeleton()
+    # P1 brazos arriba
+    sk_p1[L_WRIST].y = 0.05
+    sk_p1[R_WRIST].y = 0.05
+    sk_p2 = make_base_skeleton()
+    # P2 brazos arriba
+    sk_p2[L_WRIST].y = 0.05
+    sk_p2[R_WRIST].y = 0.05
+    pose_test = next(p for p in POSES if p.get('name') == 'Brazos Arriba!')
+
+    p1_ok, p1_score, p2_ok, p2_score, is_synced, events = duo.evaluate_players(
+        pose_test, sk_p1, sk_p2, dt=0.5, current_time=1.0
+    )
+    assert_true(p1_ok, "P1 realizo la pose correctamente")
+    assert_true(p2_ok, "P2 realizo la pose correctamente")
+    assert_true(is_synced, "Ambos jugadores estan sincronizados en la pose")
+    assert_true(duo.hold_progress_p1 > 0.5, "P1 acumulo hold progress")
+    assert_true(duo.hold_progress_p2 > 0.5, "P2 acumulo hold progress")
+
+    frame_duo = np.zeros((720, 1280, 3), dtype=np.uint8)
+    duo.draw_duo_hud(frame_duo, 1280, 720)
+    print("      -> DuoModeManager (scoring concurrente y cooperativo) OK!")
+
+    # 4. Test CustomGhostRenderer
+    ghost = CustomGhostRenderer("CYBERPUNK")
+    assert_eq(ghost.theme_key, "CYBERPUNK", "Tema inicial Cyberpunk")
+    ghost.set_theme("GOLDEN")
+    assert_eq(ghost.theme_key, "GOLDEN", "Tema cambiado a Golden")
+    frame_ghost = np.zeros((720, 1280, 3), dtype=np.uint8)
+    ghost.render_custom_ghost(frame_ghost, sk_p1, pose_test, 1280, 720, 1.0, 1.0, current_time=0.5)
+    print("      -> CustomGhostRenderer (4 temas y auras adaptativas) OK!")
+
+    # 5. Test AudioReactiveEngine
+    audio = AudioReactiveEngine(bpm=128.0)
+    audio.update(current_time=0.25, bpm=128.0, is_playing=True)
+    assert_eq(len(audio.frequency_bands), 8, "8 bandas espectrales de ecualizador")
+    assert_true(audio.beat_energy > 0, "Energia reactiva de ritmo calculada")
+    frame_audio = np.zeros((720, 1280, 3), dtype=np.uint8)
+    audio.draw_reactive_visuals(frame_audio, 1280, 720)
+    print("      -> AudioReactiveEngine (sincronia BPM y espectro) OK!")
+
+    # 6. Test PartyPlatformEngine (Gran Salto Party)
+    party = PartyPlatformEngine(speed=300.0)
+    p_state = PlayerState()
+    party.platform_x = 640.0  # Justo en el centro (ZONA DE IMPACTO)
+    p_state.jump_active = True
+    evs = party.update(dt=0.01, player_state=p_state, w=1280, current_time=2.0)
+    assert_eq(len(evs), 1, "Disparo evento de salto exitoso en zona de impacto")
+    assert_eq(evs[0]["type"], "jump_success", "Tipo de evento jump_success")
+    assert_true(evs[0]["points"] >= 150, "Puntaje otorgado por salto coordinado")
+    assert_eq(party.consecutive_jumps, 1, "Racha de 1 salto consecutivo")
+    frame_party = np.zeros((720, 1280, 3), dtype=np.uint8)
+    party.draw_platform(frame_party, 1280, 720)
+    print("      -> PartyPlatformEngine (plataforma de movimiento y deteccion de salto) OK!")
+
+    # 7. Verificacion de exclusion estricta de Simon Dice
+    for val in POSES:
+        p_name = val.get("name", "").lower()
+        assert_true("simon" not in p_name, f"Nombre prohibido encontrado: {val.get('name')}")
+    print("      -> Verificacion: Modo Simon Dice excluido estrictamente como solicito el usuario.")
+    print("      -> Todas las 4 features desactivadas por defecto e integradas exitosamente!")
+
 def test_anatomy_and_math():
     run_anatomy_and_math_tests()
 
@@ -545,6 +634,9 @@ def test_cognitive_and_profiles():
 def test_visual_and_auditor():
     run_visual_and_auditor_tests()
 
+def test_feature_toggles_and_subsystems():
+    run_feature_and_toggles_tests()
+
 def run_all():
     print("==================================================")
     print("      POSES LOCAS - SUITE COMPLETA DE TESTS       ")
@@ -554,6 +646,7 @@ def run_all():
     run_dynamic_pose_tests()
     run_cognitive_and_profile_tests()
     run_visual_and_auditor_tests()
+    run_feature_and_toggles_tests()
     print("==================================================")
     print("      TODO CHECKQUEADO Y APROBADO EXITOSAMENTE    ")
     print("==================================================")

@@ -51,7 +51,9 @@ from poses_core import (
     draw_ghost_and_target_rings, draw_skeleton_with_feedback,
     HandTrailSystem, ParticleSystem, FloatingText,
     MockVideoCapture, VideoCaptureAsync,
-    shift_queue, get_dynamic_progress, log_metric
+    shift_queue, get_dynamic_progress, log_metric,
+    FeatureFlags, FEATURES, DuoModeManager, CustomGhostRenderer,
+    AudioReactiveEngine, PartyPlatformEngine
 )
 
 # Configuración de entorno y audio
@@ -192,6 +194,12 @@ def main():
     show_success_flash = False
     success_flash_time = 0
     state = PlayerState()
+
+    # Motores de features desacopladas (desactivadas por defecto)
+    duo_mgr = DuoModeManager()
+    custom_ghost = CustomGhostRenderer()
+    audio_reactive = AudioReactiveEngine()
+    party_platform = PartyPlatformEngine()
 
     while True:
         ret, frame = cap.read()
@@ -447,9 +455,18 @@ def main():
                             state.reset()
 
                 # Dibujo AR Central (Ghost Silhouette + Anillos + Esqueleto Semáforo + Estelas)
-                draw_ghost_and_target_rings(frame, lm, current_pose, display_w, display_h, left_score, right_score)
+                if FEATURES.enable_custom_ghost:
+                    custom_ghost.render_custom_ghost(frame, lm, current_pose, display_w, display_h, left_score, right_score, current_time)
+                else:
+                    draw_ghost_and_target_rings(frame, lm, current_pose, display_w, display_h, left_score, right_score)
+
                 draw_skeleton_with_feedback(frame, lm, display_w, display_h, left_ok, right_ok, left_score, right_score)
                 hand_trails.update_and_draw(frame, lm, display_w, display_h, score_to_traffic_color(left_score), score_to_traffic_color(right_score))
+
+                # Feature: Modo Dúo (desactivado por defecto)
+                if FEATURES.enable_duo_mode:
+                    duo_mgr.evaluate_players(current_pose, lm, None, dt, current_time)
+                    duo_mgr.draw_duo_hud(frame, display_w, display_h)
 
             else:
                 control_gesture_start = None
@@ -568,6 +585,26 @@ def main():
 
             particles.update_and_draw(frame)
             floating_texts.update_and_draw(frame)
+
+            # Feature: Gran Salto Party / Plataforma de Movimiento (desactivada por defecto)
+            if FEATURES.enable_party_platform:
+                party_events = party_platform.update(dt, state, display_w, current_time)
+                party_platform.draw_platform(frame, display_w, display_h)
+                for pe in party_events:
+                    if pe["type"] == "jump_success":
+                        score += pe["points"]
+                        particles.emit(pe["x"], display_h - 170, pe["color"], 25)
+                        floating_texts.add(f"{pe['tier']} +{pe['points']}", pe["x"] - 50, display_h - 220, pe["color"], 1.3)
+                        play_sound(snd_success)
+                    elif pe["type"] == "jump_miss":
+                        floating_texts.add("MISS!", display_w // 2 - 40, display_h - 220, pe["color"], 1.3)
+                        play_sound(snd_fail)
+
+            # Feature: Audio Reactivo (desactivado por defecto)
+            if FEATURES.enable_reactive_audio:
+                bpm_val = SONG_BPM.get(current_song, 115.0)
+                audio_reactive.update(current_time, bpm_val, is_playing=True)
+                audio_reactive.draw_reactive_visuals(frame, display_w, display_h)
 
             if show_success_flash and current_time - success_flash_time < 0.25:
                 overlay_flash = gold_overlay if current_pose.get('variant') == 'GOLD' else green_overlay
@@ -697,6 +734,15 @@ def main():
                 cv2.rectangle(frame, (display_w//2 - 296, display_h - 106), (display_w//2 - 296 + int(592 * confirm_prog), display_h - 66), (0, 255, 120), -1)
             cv2.putText(frame, "AMBOS BRAZOS ARRIBA O ENTER = ¡JUGAR!", (display_w//2 - 250, display_h - 78), cv2.FONT_HERSHEY_DUPLEX, 0.68, (0, 0, 0) if confirm_prog > 0.5 else (255, 255, 255), 2, cv2.LINE_AA)
 
+            # Barra informativa de Features avanzadas (todas desactivadas por defecto)
+            feat_text = (
+                f"[D] DUO: {'ON' if FEATURES.enable_duo_mode else 'OFF'}  |  "
+                f"[G] GHOST: {'CUSTOM' if FEATURES.enable_custom_ghost else 'CLASICA'}  |  "
+                f"[A] AUDIO: {'ON' if FEATURES.enable_reactive_audio else 'OFF'}  |  "
+                f"[J] SALTO PARTY: {'ON' if FEATURES.enable_party_platform else 'OFF'}"
+            )
+            cv2.putText(frame, feat_text, (display_w//2 - 370, display_h - 28), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (180, 200, 220), 1, cv2.LINE_AA)
+
         cv2.imshow(WINDOW_NAME, frame)
 
         # Teclado de respaldo
@@ -709,6 +755,18 @@ def main():
             current_profile_idx = (current_profile_idx + 1) % len(PROFILE_KEYS)
             current_profile = PROFILE_KEYS[current_profile_idx]
             floating_texts.add(f"PERFIL: {PROFILES[current_profile]['name']}", 40, 250, (0, 255, 255), 1.2)
+        elif key == ord('d'):
+            act = FEATURES.toggle_duo_mode()
+            floating_texts.add(f"MODO DUO: {'ACTIVADO' if act else 'DESACTIVADO'}", 40, 250, (0, 255, 255), 1.2)
+        elif key == ord('g'):
+            act = FEATURES.toggle_custom_ghost()
+            floating_texts.add(f"SILUETA GHOST: {'CUSTOM NEON' if act else 'CLASICA'}", 40, 250, (0, 255, 255), 1.2)
+        elif key == ord('a'):
+            act = FEATURES.toggle_reactive_audio()
+            floating_texts.add(f"AUDIO REACTIVO: {'ACTIVADO' if act else 'DESACTIVADO'}", 40, 250, (0, 255, 255), 1.2)
+        elif key == ord('j'):
+            act = FEATURES.toggle_party_platform()
+            floating_texts.add(f"SALTO PARTY: {'ACTIVADO' if act else 'DESACTIVADO'}", 40, 250, (0, 255, 255), 1.2)
         elif key == ord('n') or key == 32:
             if not show_menu:
                 floating_texts.add("POSE SALTEADA!", 40, 310, (0, 100, 255), 1.3)
