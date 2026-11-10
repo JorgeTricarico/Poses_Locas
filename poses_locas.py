@@ -212,6 +212,38 @@ def check_airplane_left(lm):
 def check_airplane_right(lm):
     return check_right_arm_horizontal(lm) and (lm[L_SHOULDER].y - lm[R_SHOULDER].y > 0.04)
 
+# Poses cognitivas y de coordinacion motriz suave (Bajo impacto, alto reto mental)
+def check_contralateral_left_to_right(lm):
+    # Mano izquierda toca oreja derecha (cruce de la linea media)
+    return abs(lm[L_WRIST].x - lm[R_EAR].x) < 0.14 and abs(lm[L_WRIST].y - lm[R_EAR].y) < 0.14
+
+def check_contralateral_right_to_left(lm):
+    # Mano derecha toca oreja izquierda (cruce de la linea media)
+    return abs(lm[R_WRIST].x - lm[L_EAR].x) < 0.14 and abs(lm[R_WRIST].y - lm[L_EAR].y) < 0.14
+
+def check_namaste_center(lm):
+    # Manos juntas en el centro del pecho (altura esternon)
+    bu = get_body_unit(lm)
+    d_hands = math.hypot(lm[L_WRIST].x - lm[R_WRIST].x, lm[L_WRIST].y - lm[R_WRIST].y)
+    mid_chest_y = (lm[L_SHOULDER].y + lm[L_HIP].y) * 0.50
+    avg_wrist_y = (lm[L_WRIST].y + lm[R_WRIST].y) * 0.50
+    return d_hands < 0.38 * bu and abs(avg_wrist_y - mid_chest_y) < 0.22 * bu
+
+def check_clock_arms_9_12(lm):
+    # Brazo izq a las 9 (horizontal) y brazo der a las 12 (vertical arriba)
+    return check_left_arm_horizontal(lm) and check_right_arm_up(lm)
+
+def check_clock_arms_12_3(lm):
+    # Brazo izq a las 12 (vertical arriba) y brazo der a las 3 (horizontal)
+    return check_left_arm_up(lm) and check_right_arm_horizontal(lm)
+
+def check_egyptian_left_up_right_down(lm):
+    # Brazo izq flexionado 90 arriba y brazo der flexionado 90 abajo
+    bu = get_body_unit(lm)
+    l_up = lm[L_WRIST].y < lm[L_SHOULDER].y and abs(lm[L_ELBOW].x - lm[L_SHOULDER].x) > 0.15 * bu
+    r_down = lm[R_WRIST].y > lm[R_SHOULDER].y and abs(lm[R_ELBOW].x - lm[R_SHOULDER].x) > 0.15 * bu
+    return l_up and r_down
+
 # Evaluador de score continuo para iluminar el esqueleto en semaforo
 def score_arm(check_fn, lm):
     if check_fn(lm):
@@ -425,6 +457,26 @@ def check_air_guitar(state, lm):
         state.last_arm_pos = hand_y
         state.arm_hits += 1
         events.append({'type': 'hit', 'side': 'guitar', 'x': lm[R_WRIST].x, 'y': lm[R_WRIST].y})
+    completed = state.arm_hits >= 6
+    return completed, events
+
+def check_gentle_sway(state, lm):
+    # Balanceo suave ritmico de brazos (sin impacto, alto flow coordinativo)
+    events = []
+    hands_avg_x = (lm[L_WRIST].x + lm[R_WRIST].x) / 2.0
+    if state.center_x is None:
+        state.center_x = hands_avg_x
+    else:
+        state.center_x = state.center_x * 0.96 + hands_avg_x * 0.04
+    threshold = 0.07
+    if hands_avg_x > state.center_x + threshold and state.last_hit_side != 'right':
+        state.last_hit_side = 'right'
+        state.arm_hits += 1
+        events.append({'type': 'hit', 'side': 'right', 'x': hands_avg_x, 'y': lm[R_WRIST].y})
+    elif hands_avg_x < state.center_x - threshold and state.last_hit_side != 'left':
+        state.last_hit_side = 'left'
+        state.arm_hits += 1
+        events.append({'type': 'hit', 'side': 'left', 'x': hands_avg_x, 'y': lm[L_WRIST].y})
     completed = state.arm_hits >= 6
     return completed, events
 
@@ -796,7 +848,7 @@ def draw_progress_bar(frame, x, y, w, h, progress, color):
     cv2.rectangle(frame, (x, y), (x + w, y + h), (255, 255, 255), 2)
 
 # =============================================
-# CATÁLOGO EXPANDIDO DE POSES (18 POSES + ILUSTRACIONES)
+# CATÁLOGO EXPANDIDO DE POSES CON PERFILES (23 POSES)
 # =============================================
 POSES = [
     # --- Dinámicas ---
@@ -804,95 +856,191 @@ POSES = [
         'name': 'Baila! Mueve Caderas', 'color': (255, 100, 180), 'icon_name': 'pose_caderas',
         'dynamic': True, 'checks': check_shake_hips,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.38, 0.60), R_WRIST: (0.62, 0.60), L_HIP: (0.34, 0.62), R_HIP: (0.50, 0.62) },
+        'tags': ['cardio', 'dance', 'fun']
     },
     {
         'name': 'Mueve la Cabeza!', 'color': (140, 255, 80), 'icon_name': 'pose_cabeza',
         'dynamic': True, 'checks': check_shake_head,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.30, 0.45), R_ELBOW: (0.70, 0.45), L_WRIST: (0.35, 0.60), R_WRIST: (0.65, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun', 'gentle']
+    },
+    {
+        'name': 'Balanceo Suave Flow!', 'color': (140, 220, 255),
+        'dynamic': True, 'checks': check_gentle_sway,
+        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.38), R_ELBOW: (0.72, 0.38), L_WRIST: (0.35, 0.45), R_WRIST: (0.65, 0.45), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['cognitive', 'zen', 'gentle']
     },
     {
         'name': 'Boxeo Rapido!', 'color': (80, 130, 255),
         'dynamic': True, 'checks': check_boxer_jabs,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.42), R_ELBOW: (0.72, 0.30), L_WRIST: (0.42, 0.24), R_WRIST: (0.62, 0.16), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['cardio', 'athletic']
     },
     {
         'name': 'Salto Mortal!', 'color': (80, 255, 120),
         'dynamic': True, 'checks': check_jump,
         'ref': { NOSE: (0.5, 0.08), L_SHOULDER: (0.36, 0.24), R_SHOULDER: (0.64, 0.24), L_ELBOW: (0.24, 0.15), R_ELBOW: (0.76, 0.15), L_WRIST: (0.18, 0.05), R_WRIST: (0.82, 0.05), L_HIP: (0.42, 0.48), R_HIP: (0.58, 0.48) },
+        'tags': ['cardio', 'athletic']
     },
     {
         'name': 'Agacharse!', 'color': (100, 180, 255),
         'dynamic': True, 'checks': check_squat,
         'ref': { NOSE: (0.5, 0.34), L_SHOULDER: (0.36, 0.48), R_SHOULDER: (0.64, 0.48), L_ELBOW: (0.26, 0.62), R_ELBOW: (0.74, 0.62), L_WRIST: (0.35, 0.74), R_WRIST: (0.65, 0.74), L_HIP: (0.40, 0.72), R_HIP: (0.60, 0.72) },
+        'tags': ['cardio', 'athletic']
     },
     {
         'name': 'Girando!', 'color': (255, 160, 0),
         'dynamic': True, 'checks': check_spin,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.46, 0.32), R_SHOULDER: (0.54, 0.32), L_ELBOW: (0.36, 0.46), R_ELBOW: (0.64, 0.46), L_WRIST: (0.32, 0.58), R_WRIST: (0.68, 0.58), L_HIP: (0.46, 0.62), R_HIP: (0.54, 0.62) },
+        'tags': ['cardio', 'athletic']
     },
     {
         'name': 'Mueve los Brazos!', 'color': (255, 60, 255),
         'dynamic': True, 'checks': check_flail_arms,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.18), R_ELBOW: (0.74, 0.45), L_WRIST: (0.20, 0.05), R_WRIST: (0.80, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun', 'cardio']
     },
     {
         'name': 'De Lado a Lado!', 'color': (50, 255, 255),
         'dynamic': True, 'checks': check_move_side_to_side,
         'ref': { NOSE: (0.68, 0.14), L_SHOULDER: (0.56, 0.32), R_SHOULDER: (0.80, 0.32), L_ELBOW: (0.48, 0.45), R_ELBOW: (0.90, 0.45), L_WRIST: (0.54, 0.60), R_WRIST: (0.86, 0.60), L_HIP: (0.60, 0.62), R_HIP: (0.76, 0.62) },
+        'tags': ['junior', 'cardio', 'fun']
     },
     {
         'name': 'Guitarra Rock!', 'color': (0, 255, 120),
         'dynamic': True, 'checks': check_air_guitar,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.36), R_ELBOW: (0.72, 0.46), L_WRIST: (0.10, 0.30), R_WRIST: (0.55, 0.56), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun', 'cardio']
     },
     
-    # --- Estáticas con Ilustraciones pose_*.jpg ---
+    # --- Poses Cognitivas y de Coordinación (Bajo Impacto, Alto Reto Mental) ---
+    {
+        'name': 'Cruzado al Oido!', 'color': (255, 120, 180),
+        'checks': {'left_arm': check_contralateral_left_to_right, 'right_arm': check_right_arm_down},
+        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.45, 0.22), R_ELBOW: (0.70, 0.45), L_WRIST: (0.56, 0.17), R_WRIST: (0.65, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['cognitive', 'zen', 'gentle']
+    },
+    {
+        'name': 'Reloj 9 y 12!', 'color': (0, 240, 255),
+        'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_up},
+        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.32), R_ELBOW: (0.72, 0.18), L_WRIST: (0.08, 0.32), R_WRIST: (0.68, 0.05), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['cognitive', 'zen', 'gentle']
+    },
+    {
+        'name': 'Namaste Zen!', 'color': (120, 255, 150),
+        'checks': {'left_arm': check_namaste_center, 'right_arm': check_namaste_center},
+        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.25, 0.45), R_ELBOW: (0.75, 0.45), L_WRIST: (0.47, 0.45), R_WRIST: (0.53, 0.45), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['cognitive', 'zen', 'gentle']
+    },
+    {
+        'name': 'Marco Egipcio!', 'color': (255, 200, 50),
+        'checks': {'left_arm': check_egyptian_left_up_right_down, 'right_arm': check_egyptian_left_up_right_down},
+        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.32), R_ELBOW: (0.78, 0.42), L_WRIST: (0.35, 0.18), R_WRIST: (0.65, 0.55), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['cognitive', 'zen', 'gentle']
+    },
+
+    # --- Estáticas Lúdicas e Ilustradas pose_*.jpg ---
     {
         'name': 'Brazos Arriba!', 'color': (0, 255, 120), 'icon_name': 'pose_brazos',
         'checks': {'left_arm': check_left_arm_up, 'right_arm': check_right_arm_up},
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.18), R_ELBOW: (0.72, 0.18), L_WRIST: (0.32, 0.05), R_WRIST: (0.68, 0.05), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun', 'zen', 'gentle']
     },
     {
         'name': 'T-Pose!', 'color': (255, 210, 0), 'icon_name': 'pose_tpose',
         'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_horizontal},
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.32), R_ELBOW: (0.78, 0.32), L_WRIST: (0.08, 0.32), R_WRIST: (0.92, 0.32), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun', 'zen', 'gentle']
     },
     {
         'name': 'Fuerte!', 'color': (255, 110, 50), 'icon_name': 'pose_fuerte',
         'checks': {'left_arm': check_left_bicep, 'right_arm': check_right_bicep},
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.32), R_ELBOW: (0.78, 0.32), L_WRIST: (0.32, 0.20), R_WRIST: (0.68, 0.20), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun', 'cardio']
     },
     {
         'name': 'Saludo Militar!', 'color': (60, 120, 255), 'icon_name': 'pose_saludo',
         'checks': {'left_arm': check_left_arm_down, 'right_arm': check_right_salute},
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.30, 0.45), R_ELBOW: (0.74, 0.30), L_WRIST: (0.32, 0.58), R_WRIST: (0.58, 0.14), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'cognitive', 'zen', 'gentle']
     },
     {
         'name': 'Letra Y!', 'color': (255, 100, 220), 'icon_name': 'pose_letra_y',
         'checks': {'left_arm': check_left_arm_y, 'right_arm': check_right_arm_y},
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.18), R_ELBOW: (0.74, 0.18), L_WRIST: (0.16, 0.05), R_WRIST: (0.84, 0.05), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun', 'gentle']
     },
     {
         'name': 'Letra O!', 'color': (100, 240, 255), 'icon_name': 'pose_letra_o',
         'checks': {'left_arm': check_left_arm_o, 'right_arm': check_right_arm_o},
         'ref': { NOSE: (0.5, 0.20), L_SHOULDER: (0.36, 0.36), R_SHOULDER: (0.64, 0.36), L_ELBOW: (0.30, 0.14), R_ELBOW: (0.70, 0.14), L_WRIST: (0.44, 0.04), R_WRIST: (0.56, 0.04), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun', 'gentle']
     },
     {
         'name': 'Pose de Mono!', 'color': (0, 200, 255),
         'checks': {'left_arm': check_monkey_left, 'right_arm': check_monkey_right},
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.16, 0.35), R_ELBOW: (0.84, 0.35), L_WRIST: (0.36, 0.40), R_WRIST: (0.64, 0.40), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun']
     },
     {
         'name': 'Fiebre Disco!', 'color': (255, 90, 255),
         'checks': {'left_arm': check_left_hand_on_hip, 'right_arm': check_right_arm_up},
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.24, 0.46), R_ELBOW: (0.74, 0.18), L_WRIST: (0.40, 0.58), R_WRIST: (0.86, 0.05), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['cardio', 'dance', 'fun']
     },
     {
         'name': 'Avion Supersonico!', 'color': (100, 255, 200),
         'checks': {'left_arm': check_airplane_left, 'right_arm': check_airplane_right},
         'ref': { NOSE: (0.48, 0.16), L_SHOULDER: (0.34, 0.36), R_SHOULDER: (0.62, 0.28), L_ELBOW: (0.18, 0.42), R_ELBOW: (0.76, 0.22), L_WRIST: (0.06, 0.48), R_WRIST: (0.92, 0.16), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['junior', 'fun', 'gentle']
     },
 ]
+
+# =============================================
+# PERFILES DE EXPERIENCIA Y DIFICULTAD
+# =============================================
+PROFILES = {
+    'JUNIOR': {
+        'id': 'JUNIOR',
+        'name': 'AVENTURA JUNIOR',
+        'subtitle': 'Ludico, Expresivo y Divertido',
+        'time': 7.5,
+        'grace_mult': 1.3,
+        'tags': {'junior', 'fun', 'basic'}
+    },
+    'CARDIO': {
+        'id': 'CARDIO',
+        'name': 'CARDIO GROOVE',
+        'subtitle': 'Intenso, Ritmico y Dinamico',
+        'time': 5.0,
+        'grace_mult': 0.85,
+        'tags': {'cardio', 'athletic', 'dance'}
+    },
+    'ZEN': {
+        'id': 'ZEN',
+        'name': 'MENTE ACTIVA & ZEN',
+        'subtitle': 'Bajo Impacto Articular, Alto Reto Cognitivo',
+        'time': 8.5,
+        'grace_mult': 1.5,
+        'tags': {'cognitive', 'zen', 'gentle'}
+    },
+    'FIESTA': {
+        'id': 'FIESTA',
+        'name': 'FIESTA TOTAL',
+        'subtitle': 'Todas las Poses y Desafios Combinados',
+        'time': 6.0,
+        'grace_mult': 1.0,
+        'tags': {'all'}
+    }
+}
+PROFILE_KEYS = ['JUNIOR', 'CARDIO', 'ZEN', 'FIESTA']
+
+def get_poses_for_profile(profile_key):
+    if profile_key not in PROFILES or profile_key == 'FIESTA':
+        return POSES
+    req_tags = PROFILES[profile_key]['tags']
+    matching = [p for p in POSES if any(t in req_tags for t in p.get('tags', []))]
+    return matching if len(matching) >= 4 else POSES
 
 COREOGRAFIAS = {
     'macarena.wav': [
@@ -916,6 +1064,14 @@ COREOGRAFIAS = {
         {'name': 'Letra M!', 'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.25, 0.20), R_ELBOW: (0.75, 0.20), L_WRIST: (0.45, 0.12), R_WRIST: (0.55, 0.12)}, 'color': (100, 255, 100)},
         {'name': 'Letra C!', 'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_up}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.30, 0.45), R_ELBOW: (0.70, 0.15), L_WRIST: (0.25, 0.60), R_WRIST: (0.75, 0.05)}, 'color': (100, 100, 255)},
         {'name': 'Letra A!', 'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.38, 0.08), R_ELBOW: (0.62, 0.08), L_WRIST: (0.48, 0.02), R_WRIST: (0.52, 0.02)}, 'color': (255, 255, 100)},
+    ],
+    'despacito.wav': [
+        {'name': 'Namaste Zen!', 'checks': {'left_arm': check_namaste_center, 'right_arm': check_namaste_center}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.47, 0.45), R_WRIST: (0.53, 0.45), L_ELBOW: (0.25, 0.45), R_ELBOW: (0.75, 0.45)}, 'color': (120, 255, 150)},
+        {'name': 'Cruzado al Oido!', 'checks': {'left_arm': check_contralateral_left_to_right, 'right_arm': check_right_arm_down}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.56, 0.17), R_WRIST: (0.65, 0.60)}, 'color': (255, 120, 180)},
+        {'name': 'Balanceo Suave Flow!', 'dynamic': True, 'checks': check_gentle_sway, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.35, 0.45), R_WRIST: (0.65, 0.45)}, 'color': (140, 220, 255)},
+        {'name': 'Reloj 9 y 12!', 'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_up}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.08, 0.32), R_WRIST: (0.68, 0.05)}, 'color': (0, 240, 255)},
+        {'name': 'Marco Egipcio!', 'checks': {'left_arm': check_egyptian_left_up_right_down, 'right_arm': check_egyptian_left_up_right_down}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.35, 0.18), L_ELBOW: (0.22, 0.32), R_WRIST: (0.65, 0.55), R_ELBOW: (0.78, 0.42)}, 'color': (255, 200, 50)},
+        {'name': 'T-Pose!', 'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_horizontal}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.08, 0.32), R_WRIST: (0.92, 0.32)}, 'color': (255, 210, 0)}
     ]
 }
 COREOGRAFIAS['macarena_real.wav'] = COREOGRAFIAS['macarena.wav']
@@ -924,22 +1080,25 @@ COREOGRAFIAS['macarena_vocal.wav'] = COREOGRAFIAS['macarena.wav']
 # =============================================
 # COLA DE POSES Y MODIFICADORES DINÁMICOS
 # =============================================
-def shift_queue(pose_queue, mode, song, coreo_idx):
+def shift_queue(pose_queue, mode, song, coreo_idx, profile='FIESTA'):
     pose_queue.pop(0)
     if mode == 'COREO' and song in COREOGRAFIAS:
         coreo_idx = (coreo_idx + 1) % len(COREOGRAFIAS[song])
         p = dict(COREOGRAFIAS[song][coreo_idx])
         p['variant'] = 'NORMAL'
     else:
+        allow_freeze = (profile != 'ZEN')
         roll = random.random()
-        if roll < 0.12 and (not pose_queue or pose_queue[-1].get('name') != 'CONGELADOS!'):
+        if allow_freeze and roll < 0.12 and (not pose_queue or pose_queue[-1].get('name') != 'CONGELADOS!'):
             p = {'name': 'CONGELADOS!', 'color': (255, 90, 90), 'is_freeze': True, 'variant': 'NORMAL'}
         else:
-            candidates = [x for x in POSES if not pose_queue or x['name'] != pose_queue[-1]['name']]
+            profile_poses = get_poses_for_profile(profile)
+            candidates = [x for x in profile_poses if not pose_queue or x['name'] != pose_queue[-1]['name']]
+            if not candidates: candidates = profile_poses
             p = dict(random.choice(candidates))
             # Modificadores de Variabilidad
             var_roll = random.random()
-            if var_roll < 0.15 and not p.get('dynamic'):
+            if var_roll < 0.15 and not p.get('dynamic') and profile == 'CARDIO':
                 p['variant'] = 'SPEED'  # Pose Relampago
             elif var_roll < 0.27:
                 p['variant'] = 'GOLD'   # Gold Move
@@ -1045,6 +1204,10 @@ def main():
     current_mode = 'LIBRE'
     current_song = menu_options[selected_idx]['file']
     coreo_idx = -1
+    
+    current_profile_idx = 0
+    current_profile = PROFILE_KEYS[current_profile_idx]
+    
     pose_queue = []
     for _ in range(5):
         if current_mode == 'COREO' and current_song in COREOGRAFIAS:
@@ -1052,7 +1215,7 @@ def main():
             p = dict(COREOGRAFIAS[current_song][coreo_idx])
             p['variant'] = 'NORMAL'
         else:
-            candidates = [x for x in POSES if not pose_queue or x['name'] != pose_queue[-1]['name']]
+            candidates = get_poses_for_profile(current_profile)
             p = dict(random.choice(candidates))
             p['variant'] = 'NORMAL'
         pose_queue.append(p)
@@ -1123,7 +1286,7 @@ def main():
                         fever_gauge = max(0, fever_gauge - 20)
                         shake_time = current_time
                         log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'SKIPPED')
-                        current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
+                        current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
                         pose_start_time = current_time
                         control_gesture_start, hold_progress, streak = None, 0.0, 0
                         queue_slide_offset = 240.0
@@ -1158,7 +1321,7 @@ def main():
                             shake_time = current_time
                             streak = 0
                             log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'FAILED')
-                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
+                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
                             pose_start_time = current_time
                             hold_progress = 0.0
                             queue_slide_offset = 240.0
@@ -1179,7 +1342,7 @@ def main():
                             floating_texts.add(f"SOBREVIVISTE! +{points}", 40, 310, (0, 255, 120), 1.8)
                             play_sound(snd_success)
                             log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'COMPLETED')
-                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
+                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
                             pose_start_time = current_time
                             hold_progress = 0.0
                             queue_slide_offset = 240.0
@@ -1245,7 +1408,7 @@ def main():
                             show_success_flash = True
                             success_flash_time = current_time
                             log_metric(current_mode, current_pose['name'], time_taken, 'COMPLETED')
-                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
+                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
                             pose_start_time = current_time
                             queue_slide_offset = 240.0
                             state.reset()
@@ -1271,9 +1434,9 @@ def main():
                             floating_texts.add("GROOVE CADERA +15", 40, 355, (255, 120, 255), 0.72)
                             particles.emit(int(hip_x * display_w), int(lm[L_HIP].y * display_h), (255, 100, 255), 10)
 
-                        # Dwell time con Grace Decay
+                        # Dwell time con Grace Decay adaptado al Perfil
                         is_speed = current_pose.get('variant') == 'SPEED'
-                        req_time = 0.35 if is_speed else 0.55
+                        req_time = (0.35 if is_speed else 0.55) * PROFILES[current_profile]['grace_mult']
                         if left_ok and right_ok:
                             hold_progress = min(1.0, hold_progress + (dt / req_time))
                         else:
@@ -1326,7 +1489,7 @@ def main():
                             show_success_flash = True
                             success_flash_time = current_time
                             log_metric(current_mode, current_pose['name'], time_taken, 'COMPLETED')
-                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
+                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
                             pose_start_time = current_time
                             hold_progress = 0.0
                             queue_slide_offset = 240.0
@@ -1480,8 +1643,15 @@ def main():
         # =========================================================
         if show_menu:
             blend_rect_roi(frame, 0, 0, display_w, display_h, (12, 10, 18), 0.82)
-            cv2.putText(frame, "MENU DE CANCIONES Y COREOGRAFIAS", (display_w//2 - 380, 120), cv2.FONT_HERSHEY_DUPLEX, 1.4, (0, 255, 255), 2, cv2.LINE_AA)
-            cv2.putText(frame, "Controla con tus manos a distancia o con flechas del teclado", (display_w//2 - 370, 160), cv2.FONT_HERSHEY_SIMPLEX, 0.72, (200, 220, 240), 1, cv2.LINE_AA)
+            cv2.putText(frame, "MENU DE CANCIONES Y COREOGRAFIAS", (display_w//2 - 380, 85), cv2.FONT_HERSHEY_DUPLEX, 1.3, (0, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(frame, "Controla con tus manos a distancia o con flechas del teclado", (display_w//2 - 350, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (200, 220, 240), 1, cv2.LINE_AA)
+
+            # Selector de Perfil de Experiencia
+            prof = PROFILES[current_profile]
+            p_color = (0, 255, 120) if current_profile == 'ZEN' else ((0, 215, 255) if current_profile == 'JUNIOR' else ((255, 100, 200) if current_profile == 'CARDIO' else (255, 215, 0)))
+            blend_rect_roi(frame, display_w//2 - 360, 138, 720, 52, (20, 22, 38), 0.90)
+            cv2.rectangle(frame, (display_w//2 - 360, 138), (display_w//2 + 360, 190), p_color, 2)
+            cv2.putText(frame, f"PERFIL [TECLA P]: {prof['name']} - {prof['subtitle']}", (display_w//2 - 340, 172), cv2.FONT_HERSHEY_SIMPLEX, 0.54, p_color, 2, cv2.LINE_AA)
 
             # Botones kinéticos en pantalla
             cv2.circle(frame, (120, 340), 55, (255, 180, 0), 3, cv2.LINE_AA)
@@ -1508,7 +1678,7 @@ def main():
                 oy = 230 + draw_i * 68
                 if is_sel:
                     blend_rect_roi(frame, display_w//2 - 320, oy - 42, 640, 56, (30, 40, 60), 0.85)
-                    cv2.rectangle(frame, (display_w//2 - 320, oy - 42), (display_w//2 + 320, oy + 14), (0, 255, 120), 2)
+                    cv2.rectangle(frame, display_w//2 - 320, oy - 42, (display_w//2 + 320, oy + 14), (0, 255, 120), 2)
                 cv2.putText(frame, prefix + opt['display'], (display_w//2 - 290, oy), cv2.FONT_HERSHEY_DUPLEX, 1.0, color, 2, cv2.LINE_AA)
 
             # Barra kinética de inicio (ambos brazos arriba)
@@ -1529,6 +1699,19 @@ def main():
                         current_mode = menu_options[selected_idx]['type']
                         menu_both_start = None
                         pose_start_time = current_time
+                        coreo_idx = -1
+                        pose_queue = []
+                        for _ in range(5):
+                            if current_mode == 'COREO' and current_song in COREOGRAFIAS:
+                                coreo_idx = (coreo_idx + 1) % len(COREOGRAFIAS[current_song])
+                                p = dict(COREOGRAFIAS[current_song][coreo_idx])
+                                p['variant'] = 'NORMAL'
+                            else:
+                                candidates = get_poses_for_profile(current_profile)
+                                p = dict(random.choice(candidates))
+                                p['variant'] = 'NORMAL'
+                            pose_queue.append(p)
+                        current_pose = pose_queue[0]
                         if HAS_AUDIO:
                             if current_song == "Sin Musica": pygame.mixer.music.stop()
                             else:
@@ -1567,6 +1750,10 @@ def main():
             break
         elif key == ord('m') or key == ord('c'):
             show_menu = not show_menu
+        elif key == ord('p') or key == 9:  # Tecla P o TAB: ciclar Perfiles
+            current_profile_idx = (current_profile_idx + 1) % len(PROFILE_KEYS)
+            current_profile = PROFILE_KEYS[current_profile_idx]
+            floating_texts.add(f"PERFIL: {PROFILES[current_profile]['name']}", 40, 250, (0, 255, 255), 1.2)
         elif key == ord('n') or key == 32:
             if not show_menu:
                 floating_texts.add("POSE SALTEADA!", 40, 310, (0, 100, 255), 1.3)
@@ -1574,7 +1761,7 @@ def main():
                 fever_gauge = max(0, fever_gauge - 20)
                 shake_time = current_time
                 log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'SKIPPED')
-                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx)
+                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
                 pose_start_time = current_time
                 control_gesture_start, hold_progress, streak = None, 0.0, 0
                 queue_slide_offset = 240.0
@@ -1597,7 +1784,7 @@ def main():
                         p = dict(COREOGRAFIAS[current_song][coreo_idx])
                         p['variant'] = 'NORMAL'
                     else:
-                        candidates = [x for x in POSES if not pose_queue or x['name'] != pose_queue[-1]['name']]
+                        candidates = get_poses_for_profile(current_profile)
                         p = dict(random.choice(candidates))
                         p['variant'] = 'NORMAL'
                     pose_queue.append(p)

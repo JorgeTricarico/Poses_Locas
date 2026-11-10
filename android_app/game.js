@@ -44,8 +44,9 @@ let lastLoopTimestamp = performance.now();
 let timeRemaining = 0.0;
 let holdProgress = 0.0;
 
-let selectedSong = 'macarena.wav';
-let difficultyTime = 6.0;
+let selectedSong = 'despacito.wav';
+let selectedProfile = 'zen';
+let difficultyTime = 8.5;
 let gameMode = 'arcade';
 let bgMusic = new Audio();
 bgMusic.loop = true;
@@ -156,6 +157,45 @@ function check_airplane_right(lm) {
     return check_right_arm_horizontal(lm) && (lm[L_SHOULDER].y - lm[R_SHOULDER].y > 0.04);
 }
 
+// Poses Cognitivas y de Coordinación Suave (Bajo Impacto, Alto Reto Neuromuscular)
+function check_contralateral_left_to_right(lm) {
+    return Math.abs(lm[L_WRIST].x - lm[R_EAR].x) < 0.14 && Math.abs(lm[L_WRIST].y - lm[R_EAR].y) < 0.14;
+}
+function check_contralateral_right_to_left(lm) {
+    return Math.abs(lm[R_WRIST].x - lm[L_EAR].x) < 0.14 && Math.abs(lm[R_WRIST].y - lm[L_EAR].y) < 0.14;
+}
+function check_namaste_center(lm) {
+    const bu = getBodyUnit(lm);
+    const dHands = Math.hypot(lm[L_WRIST].x - lm[R_WRIST].x, lm[L_WRIST].y - lm[R_WRIST].y);
+    const midChestY = (lm[L_SHOULDER].y + lm[L_HIP].y) * 0.50;
+    const avgWristY = (lm[L_WRIST].y + lm[R_WRIST].y) * 0.50;
+    return dHands < 0.38 * bu && Math.abs(avgWristY - midChestY) < 0.22 * bu;
+}
+function check_clock_arms_9_12(lm) {
+    return check_left_arm_horizontal(lm) && check_right_arm_up(lm);
+}
+function check_clock_arms_12_3(lm) {
+    return check_left_arm_up(lm) && check_right_arm_horizontal(lm);
+}
+function check_egyptian_left_up_right_down(lm) {
+    const bu = getBodyUnit(lm);
+    const lUp = lm[L_WRIST].y < lm[L_SHOULDER].y && Math.abs(lm[L_ELBOW].x - lm[L_SHOULDER].x) > 0.15 * bu;
+    const rDown = lm[R_WRIST].y > lm[R_SHOULDER].y && Math.abs(lm[R_ELBOW].x - lm[R_SHOULDER].x) > 0.15 * bu;
+    return lUp && rDown;
+}
+function check_gentle_sway(lm) {
+    const handsAvgX = (lm[L_WRIST].x + lm[R_WRIST].x) / 2.0;
+    if (pState.centerX === null) pState.centerX = handsAvgX;
+    else pState.centerX = pState.centerX * 0.96 + handsAvgX * 0.04;
+    const th = 0.06;
+    if (handsAvgX > pState.centerX + th && pState.lastSide !== 'right') {
+        pState.lastSide = 'right'; pState.armHits++;
+    } else if (handsAvgX < pState.centerX - th && pState.lastSide !== 'left') {
+        pState.lastSide = 'left'; pState.armHits++;
+    }
+    return pState.armHits >= 6;
+}
+
 // Estados Dinámicos
 class MobilePlayerState {
     constructor() { this.reset(); }
@@ -254,33 +294,77 @@ function check_air_guitar(lm) {
 }
 
 // =====================================================================
-// CATÁLOGO DE 18 POSES Y COREOGRAFÍAS
+// CATÁLOGO DE 23 POSES, PERFILES DE EXPERIENCIA Y COREOGRAFÍAS
 // =====================================================================
 const POSES = [
     // Dinámicas
-    { name: 'Baila! Mueve Caderas', dynamic: true, check: check_shake_hips, color: '#ff477e' },
-    { name: 'Mueve la Cabeza!', dynamic: true, check: check_shake_head, color: '#00ff64' },
-    { name: 'Boxeo Rapido!', dynamic: true, check: check_boxer_jabs, color: '#00d4ff' },
-    { name: 'Salto Mortal!', dynamic: true, check: check_jump, color: '#ffb703' },
-    { name: 'Agacharse!', dynamic: true, check: check_squat, color: '#38b000' },
-    { name: 'Mueve los Brazos!', dynamic: true, check: check_flail_arms, color: '#ff007f' },
-    { name: 'Guitarra Rock!', dynamic: true, check: check_air_guitar, color: '#ffc800' },
+    { name: 'Baila! Mueve Caderas', dynamic: true, check: check_shake_hips, color: '#ff477e', tags: ['cardio', 'dance', 'fun'] },
+    { name: 'Mueve la Cabeza!', dynamic: true, check: check_shake_head, color: '#00ff64', tags: ['junior', 'fun', 'gentle'] },
+    { name: 'Balanceo Suave Flow!', dynamic: true, check: check_gentle_sway, color: '#8cdcff', tags: ['cognitive', 'zen', 'gentle'] },
+    { name: 'Boxeo Rapido!', dynamic: true, check: check_boxer_jabs, color: '#00d4ff', tags: ['cardio', 'athletic'] },
+    { name: 'Salto Mortal!', dynamic: true, check: check_jump, color: '#ffb703', tags: ['cardio', 'athletic'] },
+    { name: 'Agacharse!', dynamic: true, check: check_squat, color: '#38b000', tags: ['cardio', 'athletic'] },
+    { name: 'Mueve los Brazos!', dynamic: true, check: check_flail_arms, color: '#ff007f', tags: ['junior', 'fun', 'cardio'] },
+    { name: 'Guitarra Rock!', dynamic: true, check: check_air_guitar, color: '#ffc800', tags: ['junior', 'fun', 'cardio'] },
     
+    // Poses Cognitivas y de Coordinación (Bajo Impacto, Cruces Contralaterales)
+    { name: 'Cruzado al Oido!', checks: { l: check_contralateral_left_to_right, r: check_right_arm_down }, color: '#ff78b4', tags: ['cognitive', 'zen', 'gentle'] },
+    { name: 'Reloj 9 y 12!', checks: { l: check_left_arm_horizontal, r: check_right_arm_up }, color: '#00f0ff', tags: ['cognitive', 'zen', 'gentle'] },
+    { name: 'Namaste Zen!', checks: { l: check_namaste_center, r: check_namaste_center }, color: '#78ff96', tags: ['cognitive', 'zen', 'gentle'] },
+    { name: 'Marco Egipcio!', checks: { l: check_egyptian_left_up_right_down, r: check_egyptian_left_up_right_down }, color: '#ffc832', tags: ['cognitive', 'zen', 'gentle'] },
+
     // Estáticas
-    { name: 'Brazos Arriba!', checks: { l: check_left_arm_up, r: check_right_arm_up }, color: '#00ff64' },
-    { name: 'T-Pose!', checks: { l: check_left_arm_horizontal, r: check_right_arm_horizontal }, color: '#ffc800' },
-    { name: 'Fuerte!', checks: { l: check_left_bicep, r: check_right_bicep }, color: '#ff6432' },
-    { name: 'Saludo Militar!', checks: { l: check_left_arm_down, r: check_right_salute }, color: '#3264ff' },
-    { name: 'Letra Y!', checks: { l: check_left_arm_y, r: check_right_arm_y }, color: '#ff69b4' },
-    { name: 'Letra O!', checks: { l: check_left_arm_o, r: check_right_arm_o }, color: '#00ffff' },
-    { name: 'Pose de Mono!', checks: { l: check_monkey_left, r: check_monkey_right }, color: '#ffd700' },
-    { name: 'Fiebre Disco!', checks: { l: check_left_hand_on_hip, r: check_right_arm_up }, color: '#e056fd' },
-    { name: 'Avion Supersonico!', checks: { l: check_airplane_left, r: check_airplane_right }, color: '#686de0' },
-    { name: 'Manos en Cintura!', checks: { l: check_left_hand_on_hip, r: check_right_hand_on_hip }, color: '#f0932b' },
-    { name: 'Manos en Cabeza!', checks: { l: check_left_hand_on_head, r: check_right_hand_on_head }, color: '#badc58' }
+    { name: 'Brazos Arriba!', checks: { l: check_left_arm_up, r: check_right_arm_up }, color: '#00ff64', tags: ['junior', 'fun', 'zen', 'gentle'] },
+    { name: 'T-Pose!', checks: { l: check_left_arm_horizontal, r: check_right_arm_horizontal }, color: '#ffc800', tags: ['junior', 'fun', 'zen', 'gentle'] },
+    { name: 'Fuerte!', checks: { l: check_left_bicep, r: check_right_bicep }, color: '#ff6432', tags: ['junior', 'fun', 'cardio'] },
+    { name: 'Saludo Militar!', checks: { l: check_left_arm_down, r: check_right_salute }, color: '#3264ff', tags: ['junior', 'cognitive', 'zen', 'gentle'] },
+    { name: 'Letra Y!', checks: { l: check_left_arm_y, r: check_right_arm_y }, color: '#ff69b4', tags: ['junior', 'fun', 'gentle'] },
+    { name: 'Letra O!', checks: { l: check_left_arm_o, r: check_right_arm_o }, color: '#00ffff', tags: ['junior', 'fun', 'gentle'] },
+    { name: 'Pose de Mono!', checks: { l: check_monkey_left, r: check_monkey_right }, color: '#ffd700', tags: ['junior', 'fun'] },
+    { name: 'Fiebre Disco!', checks: { l: check_left_hand_on_hip, r: check_right_arm_up }, color: '#e056fd', tags: ['cardio', 'dance', 'fun'] },
+    { name: 'Avion Supersonico!', checks: { l: check_airplane_left, r: check_airplane_right }, color: '#686de0', tags: ['junior', 'fun', 'gentle'] },
+    { name: 'Manos en Cintura!', checks: { l: check_left_hand_on_hip, r: check_right_hand_on_hip }, color: '#f0932b', tags: ['junior', 'fun', 'zen', 'gentle'] },
+    { name: 'Manos en Cabeza!', checks: { l: check_left_hand_on_head, r: check_right_hand_on_head }, color: '#badc58', tags: ['junior', 'fun', 'zen', 'gentle'] }
 ];
 
+const PROFILES = {
+    'junior': {
+        name: 'Aventura Junior',
+        time: 7.5,
+        tags: ['junior', 'fun', 'basic']
+    },
+    'cardio': {
+        name: 'Cardio Groove',
+        time: 5.0,
+        tags: ['cardio', 'athletic', 'dance']
+    },
+    'zen': {
+        name: 'Mente Activa & Zen',
+        time: 8.5,
+        tags: ['cognitive', 'zen', 'gentle']
+    },
+    'fiesta': {
+        name: 'Fiesta Total',
+        time: 6.0,
+        tags: ['all']
+    }
+};
+
+function getPosesForProfile(key) {
+    if (!PROFILES[key] || key === 'fiesta') return POSES;
+    const reqTags = PROFILES[key].tags;
+    const matching = POSES.filter(p => p.tags && p.tags.some(t => reqTags.includes(t)));
+    return matching.length >= 4 ? matching : POSES;
+}
+
 const COREOGRAFIAS = {
+    'despacito.wav': [
+        { name: 'Balanceo Suave Flow!', dynamic: true, check: check_gentle_sway, color: '#8cdcff' },
+        { name: 'Namaste Zen!', checks: { l: check_namaste_center, r: check_namaste_center }, color: '#78ff96' },
+        { name: 'Cruzado al Oido!', checks: { l: check_contralateral_left_to_right, r: check_right_arm_down }, color: '#ff78b4' },
+        { name: 'Reloj 9 y 12!', checks: { l: check_left_arm_horizontal, r: check_right_arm_up }, color: '#00f0ff' },
+        { name: 'Marco Egipcio!', checks: { l: check_egyptian_left_up_right_down, r: check_egyptian_left_up_right_down }, color: '#ffc832' }
+    ],
     'macarena.wav': [
         { name: 'Brazo Der Adelante', checks: { l: check_left_arm_down, r: check_right_arm_horizontal }, color: '#ffb703' },
         { name: 'Brazos Adelante', checks: { l: check_left_arm_horizontal, r: check_right_arm_horizontal }, color: '#ffb703' },
@@ -353,14 +437,15 @@ const particleSys = new MobileParticles();
 function fillQueue() {
     if (gameMode === 'coreo') {
         const songKey = selectedSong in COREOGRAFIAS ? selectedSong : 'macarena.wav';
-        const list = COREOGRAFIAS[songKey] || POSES;
+        const list = COREOGRAFIAS[songKey] || getPosesForProfile(selectedProfile);
         while (poseQueue.length < 4) {
             poseQueue.push(list[coreoIndex % list.length]);
             coreoIndex++;
         }
     } else {
+        const candidatePoses = getPosesForProfile(selectedProfile);
         while (poseQueue.length < 4) {
-            const rand = POSES[Math.floor(Math.random() * POSES.length)];
+            const rand = candidatePoses[Math.floor(Math.random() * candidatePoses.length)];
             poseQueue.push(rand);
         }
     }
@@ -462,6 +547,28 @@ document.getElementById('config-btn').addEventListener('click', () => {
 
 document.getElementById('close-config-btn').addEventListener('click', () => {
     document.getElementById('config-modal').classList.remove('active');
+});
+
+document.querySelectorAll('#profile-group .opt-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+        document.querySelectorAll('#profile-group .opt-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        selectedProfile = btn.getAttribute('data-profile');
+        if (PROFILES[selectedProfile]) {
+            difficultyTime = PROFILES[selectedProfile].time;
+            const profilePill = document.getElementById('profile-pill');
+            if (profilePill) {
+                profilePill.innerText = `🧠 ${PROFILES[selectedProfile].name}`;
+            }
+            document.querySelectorAll('#diff-group .opt-btn').forEach(b => {
+                if (Math.abs(parseFloat(b.getAttribute('data-val')) - difficultyTime) < 0.1) {
+                    b.classList.add('active');
+                } else {
+                    b.classList.remove('active');
+                }
+            });
+        }
+    });
 });
 
 document.querySelectorAll('#diff-group .opt-btn').forEach(btn => {

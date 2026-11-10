@@ -37,6 +37,10 @@ from poses_locas import (
     check_monkey_left, check_monkey_right, check_airplane_left, check_airplane_right,
     check_shake_hips, check_shake_head, check_jump, check_squat,
     check_flail_arms, check_move_side_to_side, check_boxer_jabs, check_air_guitar,
+    check_contralateral_left_to_right, check_contralateral_right_to_left,
+    check_namaste_center, check_clock_arms_9_12, check_clock_arms_12_3,
+    check_egyptian_left_up_right_down, check_gentle_sway,
+    PROFILES, PROFILE_KEYS, get_poses_for_profile,
     POSES, COREOGRAFIAS
 )
 from visual_ui_auditor import UILayoutAuditor
@@ -234,8 +238,95 @@ def run_dynamic_pose_tests():
 
     print("      -> Todas las poses dinamicas pasaron la suite!")
 
+def run_cognitive_and_profile_tests():
+    print("[4/6] Probando Poses Cognitivas, Cruces Contralaterales y Perfiles...")
+    base = make_base_skeleton()
+
+    # 1. Cruzado al Oido (Izquierda a Derecha)
+    cross_lr = make_base_skeleton()
+    cross_lr[L_WRIST] = MockLM(0.56, 0.17) # Mano izquierda sobre oreja derecha
+    cross_lr[R_WRIST] = MockLM(0.64, 0.50) # Mano derecha abajo
+    assert_true(check_contralateral_left_to_right(cross_lr), "Cruzado izq a oreja der")
+    assert_true(check_right_arm_down(cross_lr), "Brazo der abajo en pose cruzada")
+
+    # 2. Cruzado al Oido (Derecha a Izquierda)
+    cross_rl = make_base_skeleton()
+    cross_rl[R_WRIST] = MockLM(0.44, 0.17) # Mano derecha sobre oreja izquierda
+    cross_rl[L_WRIST] = MockLM(0.36, 0.50) # Mano izquierda abajo
+    assert_true(check_contralateral_right_to_left(cross_rl), "Cruzado der a oreja izq")
+    assert_true(check_left_arm_down(cross_rl), "Brazo izq abajo en pose cruzada")
+
+    # 3. Namaste Zen (Manos juntas en el centro del pecho)
+    namaste = make_base_skeleton()
+    namaste[L_WRIST] = MockLM(0.49, 0.48)
+    namaste[R_WRIST] = MockLM(0.51, 0.48)
+    assert_true(check_namaste_center(namaste), "Namaste manos juntas al centro del pecho")
+
+    # 4. Reloj 9 y 12 (Brazo izq a las 9, der a las 12)
+    clock_9_12 = make_base_skeleton()
+    clock_9_12[L_WRIST] = MockLM(0.12, 0.32) # horizontal izq
+    clock_9_12[R_WRIST] = MockLM(0.62, 0.05) # vertical arriba der
+    assert_true(check_clock_arms_9_12(clock_9_12), "Reloj 9 y 12")
+
+    # 5. Reloj 12 y 3 (Brazo izq a las 12, der a las 3)
+    clock_12_3 = make_base_skeleton()
+    clock_12_3[L_WRIST] = MockLM(0.38, 0.05) # vertical arriba izq
+    clock_12_3[R_WRIST] = MockLM(0.88, 0.32) # horizontal der
+    assert_true(check_clock_arms_12_3(clock_12_3), "Reloj 12 y 3")
+
+    # 6. Marco Egipcio (L-up, R-down flexionados)
+    egypt = make_base_skeleton()
+    egypt[L_SHOULDER] = MockLM(0.38, 0.32)
+    egypt[L_ELBOW] = MockLM(0.25, 0.32)
+    egypt[L_WRIST] = MockLM(0.25, 0.18) # arriba del hombro
+    egypt[R_SHOULDER] = MockLM(0.62, 0.32)
+    egypt[R_ELBOW] = MockLM(0.75, 0.32)
+    egypt[R_WRIST] = MockLM(0.75, 0.46) # abajo del hombro
+    assert_true(check_egyptian_left_up_right_down(egypt), "Marco Egipcio asimetrico")
+
+    # 7. Balanceo Suave Flow (dinamico)
+    state = PlayerState()
+    check_gentle_sway(state, base) # Calibrar center_x
+    done = False
+    for i in range(12):
+        lm = make_base_skeleton()
+        x_off = 0.08 if i % 2 == 0 else -0.08
+        lm[L_WRIST] = MockLM(0.35 + x_off, 0.45)
+        lm[R_WRIST] = MockLM(0.65 + x_off, 0.45)
+        done, _ = check_gentle_sway(state, lm)
+        if done: break
+    assert_true(done, "Balanceo Suave Flow completado")
+
+    # 8. Verificacion de Perfiles y Filtrado Seguro
+    for p_key in PROFILE_KEYS:
+        assert_true(p_key in PROFILES, f"Perfil {p_key} registrado en PROFILES")
+        poses_p = get_poses_for_profile(p_key)
+        assert_true(len(poses_p) >= 4, f"Perfil {p_key} debe tener al menos 4 poses, tiene {len(poses_p)}")
+
+    # Perfil ZEN / MENTE ACTIVA: Exclusion estricta de saltos y sentadillas
+    zen_poses = get_poses_for_profile('ZEN')
+    for p in zen_poses:
+        assert_true(p.get('checks') != check_jump, f"Perfil ZEN no debe incluir check_jump ({p['name']})")
+        assert_true(p.get('checks') != check_squat, f"Perfil ZEN no debe incluir check_squat ({p['name']})")
+        tags = set(p.get('tags', []))
+        assert_true(bool(tags.intersection({'cognitive', 'zen', 'gentle'})), f"Pose {p['name']} en ZEN sin tag permitido")
+
+    # Perfil CARDIO: Inclusion de saltos/boxeo/caderas
+    cardio_poses = get_poses_for_profile('CARDIO')
+    cardio_names = [p['name'] for p in cardio_poses]
+    assert_true('Boxeo Rapido!' in cardio_names, "Cardio debe incluir Boxeo Rapido!")
+    assert_true('Salto Mortal!' in cardio_names, "Cardio debe incluir Salto Mortal!")
+
+    # Perfil JUNIOR: Inclusion de poses ludicas
+    junior_poses = get_poses_for_profile('JUNIOR')
+    junior_names = [p['name'] for p in junior_poses]
+    assert_true('Mueve la Cabeza!' in junior_names, "Junior debe incluir Mueve la Cabeza!")
+    assert_true('Letra Y!' in junior_names, "Junior debe incluir Letra Y!")
+
+    print("      -> Todas las 5 poses cognitivas y los 4 perfiles pasaron la suite!")
+
 def run_visual_and_auditor_tests():
-    print("[4/5] Renderizando Escenas Reales Arquitectura 2.0 (5 Zonas AAA)...")
+    print("[5/6] Renderizando Escenas Reales Arquitectura 2.0 (5 Zonas AAA)...")
     w, h = 1280, 720
     auditor = UILayoutAuditor("Gameplay_AAA", w, h, check_center_safe_zone=True)
 
@@ -443,6 +534,7 @@ def run_all():
     run_anatomy_and_math_tests()
     run_static_pose_tests()
     run_dynamic_pose_tests()
+    run_cognitive_and_profile_tests()
     run_visual_and_auditor_tests()
     print("==================================================")
     print("      TODO CHECKQUEADO Y APROBADO EXITOSAMENTE    ")

@@ -507,20 +507,20 @@ def generate_sheet_04_pose_atlas():
         cv2.rectangle(frame, (ix, iy), (ix + 142, iy + 142), (0, 220, 255), 2)
         cv2.putText(frame, label, (ix + 4, iy + 165), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (240, 240, 255), 1, cv2.LINE_AA)
 
-    cv2.putText(frame, "FILA 2: Nuevas Poses Divertidas y Dinamicas Agregadas al Catalogo (Arquetipos de Party Game):",
-                (25, 315), cv2.FONT_HERSHEY_DUPLEX, 0.62, (80, 255, 140), 1, cv2.LINE_AA)
+    cv2.putText(frame, "FILA 2: Poses de Estimulacion Cognitiva y Motriz (Cero Impacto Articular, Alta Plasticidad):",
+                (25, 315), cv2.FONT_HERSHEY_DUPLEX, 0.60, (80, 255, 140), 1, cv2.LINE_AA)
 
     new_poses = [
-        ("POSE DE MONO!", "Manos en axilas + codos afuera", (0, 200, 255),
-         {'nose':(0.5,0.16),'ls':(0.36,0.32),'rs':(0.64,0.32),'le':(0.14,0.34),'re':(0.86,0.34),'lw':(0.38,0.40),'rw':(0.62,0.40),'lh':(0.42,0.60),'rh':(0.58,0.60),'lk':(0.34,0.76),'rk':(0.66,0.76),'la':(0.38,0.90),'ra':(0.62,0.90)}),
-        ("FIEBRE DISCO!", "Mano Der alta + Izq en cintura", (255, 100, 255),
-         {'nose':(0.5,0.16),'ls':(0.36,0.32),'rs':(0.64,0.32),'le':(0.24,0.46),'re':(0.76,0.16),'lw':(0.40,0.58),'rw':(0.88,0.04),'lh':(0.42,0.60),'rh':(0.58,0.60),'lk':(0.38,0.76),'rk':(0.62,0.76),'la':(0.36,0.90),'ra':(0.64,0.90)}),
-        ("AVION SUPERSONICO!", "Brazos en T + Inclinacion Torso", (100, 255, 220),
-         {'nose':(0.46,0.18),'ls':(0.34,0.38),'rs':(0.62,0.26),'le':(0.18,0.44),'re':(0.78,0.20),'lw':(0.05,0.50),'rw':(0.94,0.14),'lh':(0.42,0.62),'rh':(0.58,0.60),'lk':(0.42,0.78),'rk':(0.58,0.78),'la':(0.42,0.90),'ra':(0.58,0.90)}),
-        ("BOXEO RAPIDO! (Din)", "6 Jabs alternados izq/der", (80, 120, 255),
-         {'nose':(0.5,0.16),'ls':(0.36,0.32),'rs':(0.64,0.32),'le':(0.28,0.42),'re':(0.74,0.26),'lw':(0.42,0.24),'rw':(0.62,0.14),'lh':(0.42,0.60),'rh':(0.58,0.60),'lk':(0.38,0.76),'rk':(0.62,0.76),'la':(0.36,0.90),'ra':(0.64,0.90)}),
-        ("GUITARRA ROCK! (Din)", "Brazo mastil + mano rasgueando", (0, 255, 120),
-         {'nose':(0.5,0.16),'ls':(0.36,0.32),'rs':(0.64,0.32),'le':(0.20,0.34),'re':(0.74,0.46),'lw':(0.08,0.30),'rw':(0.54,0.56),'lh':(0.42,0.60),'rh':(0.58,0.60),'lk':(0.36,0.76),'rk':(0.64,0.76),'la':(0.34,0.90),'ra':(0.66,0.90)}),
+        ("CRUZADO AL OIDO!", "Cruce de linea media (L->R)", (255, 120, 180),
+         {'nose':(0.5,0.16),'ls':(0.36,0.32),'rs':(0.64,0.32),'le':(0.44,0.22),'re':(0.72,0.45),'lw':(0.56,0.17),'rw':(0.65,0.60),'lh':(0.42,0.60),'rh':(0.58,0.60),'lk':(0.38,0.76),'rk':(0.62,0.76),'la':(0.38,0.90),'ra':(0.62,0.90)}),
+        ("RELOJ 9 Y 12!", "Orientacion espacial y reloj", (0, 240, 255),
+         {'nose':(0.5,0.16),'ls':(0.36,0.32),'rs':(0.64,0.32),'le':(0.22,0.32),'re':(0.72,0.18),'lw':(0.08,0.32),'rw':(0.68,0.05),'lh':(0.42,0.60),'rh':(0.58,0.60),'lk':(0.38,0.76),'rk':(0.62,0.76),'la':(0.38,0.90),'ra':(0.62,0.90)}),
+        ("NAMASTE ZEN!", "Simetria y propiocepcion", (120, 255, 150),
+         {'nose':(0.5,0.16),'ls':(0.36,0.32),'rs':(0.64,0.32),'le':(0.25,0.45),'re':(0.75,0.45),'lw':(0.47,0.45),'rw':(0.53,0.45),'lh':(0.42,0.60),'rh':(0.58,0.60),'lk':(0.38,0.76),'rk':(0.62,0.76),'la':(0.38,0.90),'ra':(0.62,0.90)}),
+        ("MARCO EGIPCIO!", "Coordinacion disociada 90 deg", (255, 200, 50),
+         {'nose':(0.5,0.16),'ls':(0.36,0.32),'rs':(0.64,0.32),'le':(0.22,0.32),'re':(0.78,0.42),'lw':(0.35,0.18),'rw':(0.65,0.55),'lh':(0.42,0.60),'rh':(0.58,0.60),'lk':(0.38,0.76),'rk':(0.62,0.76),'la':(0.38,0.90),'ra':(0.62,0.90)}),
+        ("BALANCEO FLOW! (Din)", "Pendulo suave ritmico", (140, 220, 255),
+         {'nose':(0.5,0.16),'ls':(0.36,0.32),'rs':(0.64,0.32),'le':(0.28,0.38),'re':(0.72,0.38),'lw':(0.35,0.45),'rw':(0.65,0.45),'lh':(0.42,0.60),'rh':(0.58,0.60),'lk':(0.38,0.76),'rk':(0.62,0.76),'la':(0.38,0.90),'ra':(0.62,0.90)}),
     ]
 
     for i, (title, desc, col, pts) in enumerate(new_poses):
@@ -597,25 +597,26 @@ def generate_sheet_05_modifiers_and_kinetic_menu():
     cv2.putText(frame, "MANO DER", (mx + mw - 104, my + 105), cv2.FONT_HERSHEY_SIMPLEX, 0.46, (255, 200, 50), 1, cv2.LINE_AA)
     cv2.putText(frame, "BAJAR", (mx + mw - 90, my + 128), cv2.FONT_HERSHEY_DUPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
 
-    songs = ["   [LIBRE] ASEREJE", "-> [COREO] MACARENA (103 BPM) <-", "   [LIBRE] DANZA KUDURO", "   [COREO] YMCA"]
+    songs = ["   [FLOW] DESPACITO (89 BPM)", "-> [COREO] MACARENA (103 BPM) <-", "   [FIESTA] ASEREJE (106 BPM)", "   [CARDIO] YMCA (127 BPM)"]
     for i, s in enumerate(songs):
         scol = (0, 255, 120) if "->" in s else (160, 165, 180)
-        cv2.putText(frame, s, (mx + 125, my + 95 + i * 38), cv2.FONT_HERSHEY_DUPLEX, 0.56, scol, 1, cv2.LINE_AA)
+        cv2.putText(frame, s, (mx + 115, my + 95 + i * 38), cv2.FONT_HERSHEY_DUPLEX, 0.54, scol, 1, cv2.LINE_AA)
 
-    cv2.rectangle(frame, (mx + 85, my + 265), (mx + mw - 85, my + 305), (45, 55, 70), -1)
-    cv2.rectangle(frame, (mx + 85, my + 265), (mx + 85 + 290, my + 305), (0, 255, 120), -1)
-    cv2.rectangle(frame, (mx + 85, my + 265), (mx + mw - 85, my + 305), (255, 255, 255), 2)
-    cv2.putText(frame, "AMBOS BRAZOS ARRIBA = JUGAR! (75%)", (mx + 110, my + 292), cv2.FONT_HERSHEY_DUPLEX, 0.54, (0, 0, 0), 2, cv2.LINE_AA)
+    cv2.rectangle(frame, (mx + 65, my + 265), (mx + mw - 65, my + 305), (45, 55, 70), -1)
+    cv2.rectangle(frame, (mx + 65, my + 265), (mx + 65 + 320, my + 305), (0, 255, 120), -1)
+    cv2.rectangle(frame, (mx + 65, my + 265), (mx + mw - 65, my + 305), (255, 255, 255), 2)
+    cv2.putText(frame, "AMBOS BRAZOS ARRIBA = JUGAR! (75%)", (mx + 85, my + 292), cv2.FONT_HERSHEY_DUPLEX, 0.52, (0, 0, 0), 2, cv2.LINE_AA)
 
     gestures_help = [
         "1. Levantar Mano Izquierda: Sube en la lista de canciones.",
         "2. Levantar Mano Derecha: Baja en la lista de canciones.",
         "3. Levantar AMBOS Brazos 1.0s: Inicia la partida sin teclado.",
-        "4. En partida - Cruzar brazos en X (0.8s): Salta la pose.",
-        "5. Teclado (W/S/Enter/Espacio/M) sigue activo como respaldo."
+        "4. Tecla P / Tab: Cambia Perfil (Junior, Cardio, Zen, Fiesta).",
+        "5. En partida - Cruzar brazos en X (0.8s): Salta la pose.",
+        "6. Teclado (W/S/Enter/Espacio/M/P) sigue activo como respaldo."
     ]
     for i, g in enumerate(gestures_help):
-        cv2.putText(frame, g, (rx + 28, ry + 440 + i * 32), cv2.FONT_HERSHEY_SIMPLEX, 0.54, (220, 235, 230), 1, cv2.LINE_AA)
+        cv2.putText(frame, g, (rx + 24, ry + 425 + i * 30), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (220, 235, 230), 1, cv2.LINE_AA)
 
     cv2.imwrite("diseno_05_eventos_gold_move_y_menu_kinetico.jpg", frame, [cv2.IMWRITE_JPEG_QUALITY, 92])
     return frame
