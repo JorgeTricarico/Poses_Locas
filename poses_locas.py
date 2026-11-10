@@ -38,12 +38,42 @@ def play_sound(snd):
 
 RTSP_URL = "rtsp://jorge.tricarico:3424Trica@192.168.0.148:554/stream1"
 
+class MockVideoCapture:
+    def __init__(self):
+        self.started = False
+        self.read_lock = threading.Lock()
+        self.t0 = time.time()
+    def is_opened(self): return True
+    def release(self): self.stop()
+    def start(self):
+        self.started = True
+        return self
+    def stop(self): self.started = False
+    def read(self):
+        t = time.time() - self.t0
+        frame = np.full((720, 1280, 3), (30, 30, 45), dtype=np.uint8)
+        cv2.putText(frame, "POSES LOCAS - MODO DEMO", (360, 320), cv2.FONT_HERSHEY_DUPLEX, 1.1, (0, 255, 255), 2)
+        cv2.putText(frame, "Camara web no detectada. Conecte su camara.", (320, 380), cv2.FONT_HERSHEY_DUPLEX, 0.7, (200, 200, 200), 1)
+        r = int(20 + 10 * math.sin(t * 4))
+        cv2.circle(frame, (640, 460), r, (0, 255, 0), -1)
+        return True, frame
+
 class VideoCaptureAsync:
     def __init__(self, src=0):
         self.src = src
         self.cap = cv2.VideoCapture(self.src)
+        if isinstance(self.src, int):
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
         self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        self.grabbed, self.frame = self.cap.read()
+        self.grabbed = False
+        self.frame = None
+        for _ in range(20):
+            if self.cap.isOpened():
+                self.grabbed, self.frame = self.cap.read()
+                if self.grabbed and self.frame is not None:
+                    break
+            time.sleep(0.1)
         self.started = False
         self.read_lock = threading.Lock()
     def is_opened(self): return self.cap.isOpened() and self.grabbed
@@ -70,7 +100,8 @@ class VideoCaptureAsync:
         return grabbed, frame
     def stop(self):
         self.started = False
-        self.thread.join()
+        if hasattr(self, 'thread') and self.thread.is_alive():
+            self.thread.join()
 
 # =============================================
 # MEDIAPIPE SETUP
@@ -531,13 +562,19 @@ def log_metric(mode, pose_name, time_taken, status):
     except Exception as e:
         print(f"Error logging metric: {e}")
 def main():
-    cap = VideoCaptureAsync(0)
-    if not cap.is_opened():
-        cap.release()
-        cap = VideoCaptureAsync(RTSP_URL)
-    if not cap.is_opened():
-        cap.release()
-        return
+    cap = None
+    for cam_id in [0, 1, 2, RTSP_URL]:
+        test_cap = VideoCaptureAsync(cam_id)
+        if test_cap.is_opened():
+            cap = test_cap
+            print(f"Camara abierta correctamente en origen: {cam_id}")
+            break
+        test_cap.release()
+
+    if cap is None or not cap.is_opened():
+        print("No se detecto camara fisica/RTSP. Iniciando modo Demo / Camara Virtual...")
+        cap = MockVideoCapture()
+
     cap.start()
     
     pose_detector = mp_pose.Pose(model_complexity=0, min_detection_confidence=0.5, min_tracking_confidence=0.5, enable_segmentation=False)
