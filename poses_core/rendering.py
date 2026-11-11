@@ -132,7 +132,13 @@ def draw_full_body_stickman(frame, x, y, w, h, pts, arm_color, body_color=(210, 
 
 
 def get_animated_ref_points(pose_data, t):
-    """Calcula puntos cinemáticos animados para el Coach Vivo según la pose."""
+    """
+    Calcula puntos cinemáticos animados biomecánicamente coherentes para el Coach Vivo.
+    Garantiza:
+      - Simetría bilateral en movimientos de cadera (izquierda <-> derecha balanceado).
+      - Preservación de la longitud de piernas sin estiramiento deformado de pies.
+      - Apoyo de pies natural con flexión orgánica de rodillas y contrapposto de columna.
+    """
     base_ref = pose_data.get('ref', {})
     pts = {}
     key_map = {
@@ -143,75 +149,267 @@ def get_animated_ref_points(pose_data, t):
     for k, v in base_ref.items():
         if k in key_map:
             pts[key_map[k]] = (float(v[0]), float(v[1]))
-            
-    lh = pts.get('lh', (0.42, 0.60))
-    rh = pts.get('rh', (0.58, 0.60))
-    name = pose_data.get('name', '')
 
+    name = pose_data.get('name', '')
+    floor_y = 0.90
+    la_x = 0.40
+    ra_x = 0.60
+
+    # =================================================================
+    # 1. BAILA! MUEVE CADERAS (OSCILACIÓN RÍTMICA BILATERAL IZQ <-> DER)
+    # =================================================================
     if 'Caderas' in name:
-        sway = math.sin(t * 7.0) * 0.09
-        pts['lh'] = (lh[0] + sway, lh[1])
-        pts['rh'] = (rh[0] + sway, rh[1])
+        sway = math.sin(t * 5.5) * 0.10  # Oscila simétricamente entre -0.10 (IZQ) y +0.10 (DER)
+        pelvis_tilt = sway * 0.025        # Elevación natural de la cresta ilíaca
+
+        # Caderas centradas en 0.50 con balanceo completo a ambos lados
+        pts['lh'] = (0.42 + sway, 0.60 + pelvis_tilt)
+        pts['rh'] = (0.58 + sway, 0.60 - pelvis_tilt)
+
+        # Contrapeso dinámico de hombros (contrapposto natural)
+        pts['ls'] = (0.36 - sway * 0.30, 0.32 - pelvis_tilt * 0.7)
+        pts['rs'] = (0.64 - sway * 0.30, 0.32 + pelvis_tilt * 0.7)
+
+        # Cabeza compensada
+        pts['nose'] = (0.50 - sway * 0.15, 0.14)
+
+        # Brazos en cadera balanceándose en consonancia
+        if 'lw' in pts: pts['lw'] = (0.34 + sway * 0.7, 0.58 + pelvis_tilt)
+        if 'rw' in pts: pts['rw'] = (0.66 + sway * 0.7, 0.58 - pelvis_tilt)
+        if 'le' in pts: pts['le'] = (0.23 + sway * 0.4, 0.45)
+        if 're' in pts: pts['re'] = (0.77 + sway * 0.4, 0.45)
+
+        # Pies plantados firmes en el suelo (¡sin estirar ni deformar!)
+        la_y = floor_y
+        ra_y = floor_y
+
+        # Rodillas con cinemática inversa suave
+        lk_x = pts['lh'][0] * 0.65 + la_x * 0.35
+        rk_x = pts['rh'][0] * 0.65 + ra_x * 0.35
+        lk_y = 0.75 + max(0.0, sway) * 0.04
+        rk_y = 0.75 + max(0.0, -sway) * 0.04
+
+        pts['lk'] = (lk_x, lk_y)
+        pts['rk'] = (rk_x, rk_y)
+        pts['la'] = (la_x, la_y)
+        pts['ra'] = (ra_x, ra_y)
+        return pts
+
+    # =================================================================
+    # 2. DE LADO A LADO (PASO TRASLACIONAL COMPLETO)
+    # =================================================================
     elif 'Lado a Lado' in name:
-        step = math.sin(t * 4.5) * 0.14
+        step = math.sin(t * 4.0) * 0.12
         for k in list(pts.keys()):
             pts[k] = (pts[k][0] + step, pts[k][1])
+        la_x += step
+        ra_x += step
+        pts['lk'] = (pts['lh'][0] * 0.6 + la_x * 0.4, 0.75)
+        pts['rk'] = (pts['rh'][0] * 0.6 + ra_x * 0.4, 0.75)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
+
+    # =================================================================
+    # 3. SALTO MORTAL (CICLO NATURAL: CARGA -> VUELO -> AMORTIGUACIÓN)
+    # =================================================================
     elif 'Salto' in name:
-        bounce = -abs(math.sin(t * 5.5)) * 0.16
+        phase = (t * 4.5) % (2.0 * math.pi)
+        sin_p = math.sin(phase)
+        is_air = sin_p > 0.0
+        jump_y = -sin_p * 0.16 if is_air else 0.0
+
         for k in list(pts.keys()):
-            pts[k] = (pts[k][0], pts[k][1] + bounce)
+            pts[k] = (pts[k][0], pts[k][1] + jump_y)
+
+        if is_air:
+            la_y = floor_y + jump_y * 0.85
+            ra_y = floor_y + jump_y * 0.85
+            lk_y = 0.75 + jump_y * 0.90
+            rk_y = 0.75 + jump_y * 0.90
+        else:
+            cushion = abs(sin_p) * 0.04
+            la_y = floor_y
+            ra_y = floor_y
+            lk_y = 0.75 + cushion
+            rk_y = 0.75 + cushion
+
+        pts['lk'] = (pts['lh'][0], lk_y)
+        pts['rk'] = (pts['rh'][0], rk_y)
+        pts['la'] = (la_x, la_y)
+        pts['ra'] = (ra_x, ra_y)
+        return pts
+
+    # =================================================================
+    # 4. AGACHARSE (SQUAT ERGONÓMICO CON APERTURA DE RODILLAS)
+    # =================================================================
     elif 'Agacharse' in name:
-        squat_down = abs(math.sin(t * 4.0)) * 0.16
+        squat = abs(math.sin(t * 3.5)) * 0.14
         for k in list(pts.keys()):
-            pts[k] = (pts[k][0], pts[k][1] + squat_down)
+            pts[k] = (pts[k][0], pts[k][1] + squat)
+
+        la_x, ra_x = 0.36, 0.64
+        pts['lk'] = (0.32, 0.75 + squat * 0.5)
+        pts['rk'] = (0.68, 0.75 + squat * 0.5)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
+
+    # =================================================================
+    # 5. MUEVE LA CABEZA (NODDING Y TILT RÍTMICO)
+    # =================================================================
+    elif 'Cabeza' in name:
+        nod_x = math.sin(t * 6.0) * 0.08
+        nod_y = abs(math.cos(t * 6.0)) * 0.03
+        pts['nose'] = (0.50 + nod_x, 0.14 + nod_y)
+        pts['ls'] = (0.36, 0.32 + nod_y * 0.3)
+        pts['rs'] = (0.64, 0.32 + nod_y * 0.3)
+        pts['lk'] = (0.41, 0.75)
+        pts['rk'] = (0.59, 0.75)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
+
+    # =================================================================
+    # 6. BALANCEO SUAVE FLOW (YOGA / MINDFULNESS FLOW)
+    # =================================================================
+    elif 'Flow' in name or 'Balanceo' in name:
+        flow = math.sin(t * 3.2) * 0.06
+        for k in ['nose', 'ls', 'rs', 'le', 're', 'lw', 'rw', 'lh', 'rh']:
+            if k in pts:
+                pts[k] = (pts[k][0] + flow, pts[k][1])
+        pts['lk'] = (pts['lh'][0] * 0.7 + la_x * 0.3, 0.75)
+        pts['rk'] = (pts['rh'][0] * 0.7 + ra_x * 0.3, 0.75)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
+
+    # =================================================================
+    # 7. BOXEO RÁPIDO (JABS ALTERNADOS IZQ / DER CON GUARDIA)
+    # =================================================================
+    elif 'Boxeo' in name:
+        jab = math.sin(t * 8.5)
+        if jab > 0.1:
+            pts['lw'] = (0.46 + jab * 0.12, 0.22)
+            pts['le'] = (0.38, 0.28)
+            pts['rw'] = (0.64, 0.28)
+            pts['re'] = (0.72, 0.38)
+        elif jab < -0.1:
+            pts['rw'] = (0.54 - abs(jab) * 0.12, 0.22)
+            pts['re'] = (0.62, 0.28)
+            pts['lw'] = (0.36, 0.28)
+            pts['le'] = (0.28, 0.38)
+        pts['lk'] = (0.41, 0.75)
+        pts['rk'] = (0.59, 0.75)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
+
+    # =================================================================
+    # 8. MUEVE LOS BRAZOS / GIRANDO / GUITARRA
+    # =================================================================
     elif 'Mueve los Brazos' in name:
-        wave = math.sin(t * 8.0) * 0.20
-        if 'lw' in pts: pts['lw'] = (pts['lw'][0], 0.30 + wave)
-        if 'rw' in pts: pts['rw'] = (pts['rw'][0], 0.30 - wave)
+        wave = math.sin(t * 7.5) * 0.18
+        if 'lw' in pts: pts['lw'] = (pts['lw'][0], 0.26 + wave)
+        if 'rw' in pts: pts['rw'] = (pts['rw'][0], 0.26 - wave)
     elif 'Gir' in name:
         spin_cos = math.cos(t * 4.5)
         for k in list(pts.keys()):
-            dx = pts[k][0] - 0.5
-            pts[k] = (0.5 + dx * spin_cos, pts[k][1])
-    elif 'Boxeo' in name:
-        jab = math.sin(t * 10.0) * 0.10
-        if 'lw' in pts: pts['lw'] = (0.38 - jab, 0.24 - abs(jab)*0.2)
-        if 'rw' in pts: pts['rw'] = (0.62 + jab, 0.24 - abs(jab)*0.2)
+            dx = pts[k][0] - 0.50
+            pts[k] = (0.50 + dx * spin_cos, pts[k][1])
+    elif 'Guitarra' in name:
+        strum = math.sin(t * 9.0) * 0.08
+        if 'rw' in pts: pts['rw'] = (0.55 + strum, 0.56 + abs(strum)*0.5)
 
+    # Para poses estáticas: respiración y presencia orgánica
+    breathe = math.sin(t * 3.0) * 0.008
+    if 'ls' in pts and 'rs' in pts and not pose_data.get('dynamic'):
+        pts['ls'] = (pts['ls'][0] - breathe, pts['ls'][1] - breathe)
+        pts['rs'] = (pts['rs'][0] + breathe, pts['rs'][1] - breathe)
+
+    # Rodillas y tobillos base sin deformación
     lh_now = pts.get('lh', (0.42, 0.60))
     rh_now = pts.get('rh', (0.58, 0.60))
-    is_squat = 'Agacharse' in name
-    spread = 0.08 if is_squat else 0.0
-    foot_y = 0.90 if 'Salto' not in name else min(0.90, lh_now[1] + 0.26)
-    knee_y = (lh_now[1] + foot_y) * 0.5
-
-    pts['lk'] = (lh_now[0] - spread, knee_y)
-    pts['rk'] = (rh_now[0] + spread, knee_y)
-    pts['la'] = (0.38, foot_y)
-    pts['ra'] = (0.62, foot_y)
+    pts['lk'] = (lh_now[0] * 0.65 + la_x * 0.35, 0.75)
+    pts['rk'] = (rh_now[0] * 0.65 + ra_x * 0.35, 0.75)
+    pts['la'] = (la_x, floor_y)
+    pts['ra'] = (ra_x, floor_y)
     return pts
 
 
 def draw_intent_arrows_in_box(frame, pose_data, box_x, box_y, box_w, box_h, t):
-    """Dibuja flechas animadas que ilustran la trayectoria requerida por la pose."""
+    """
+    Dibuja flechas e indicadores visuales dinámicos que comunican con claridad
+    absoluta la intención del movimiento (ambos lados, ritmo y dirección).
+    """
     name = pose_data.get('name', '')
     col = pose_data.get('color', (0, 255, 255))
     cx = box_x + box_w // 2
     cy = box_y + box_h // 2
-    if 'Caderas' in name or 'Lado a Lado' in name:
-        y_arr = box_y + int(box_h * 0.62)
-        off = int(math.sin(t * 7.0) * 7)
-        cv2.arrowedLine(frame, (cx - 15 + off, y_arr), (box_x + 15, y_arr), col, 3, tipLength=0.4)
-        cv2.arrowedLine(frame, (cx + 15 + off, y_arr), (box_x + box_w - 15, y_arr), col, 3, tipLength=0.4)
+
+    # --- CADERAS: INDICADOR BILATERAL CON GUÍA Y FLECHAS ALTERNADAS IZQ <-> DER ---
+    if 'Caderas' in name:
+        y_arr = box_y + int(box_h * 0.60)
+        sway_val = math.sin(t * 5.5)
+
+        # Carril guía horizontal sutil
+        cv2.line(frame, (box_x + 16, y_arr), (box_x + box_w - 16, y_arr), (60, 60, 80), 1, cv2.LINE_AA)
+        cv2.circle(frame, (cx, y_arr), 3, (140, 140, 160), -1)
+
+        if sway_val > 0.08:
+            # Movimiento hacia la DERECHA: Flecha pulsante a la derecha con texto guía
+            tip_x = int(cx + 8 + (box_w * 0.36) * min(1.0, sway_val * 1.3))
+            cv2.arrowedLine(frame, (cx + 4, y_arr), (tip_x, y_arr), (0, 220, 255), 3, tipLength=0.35)
+            cv2.putText(frame, "DER >", (box_x + box_w - 52, y_arr - 8), cv2.FONT_HERSHEY_DUPLEX, 0.42, (0, 220, 255), 1, cv2.LINE_AA)
+        elif sway_val < -0.08:
+            # Movimiento hacia la IZQUIERDA: Flecha pulsante a la izquierda con texto guía
+            tip_x = int(cx - 8 - (box_w * 0.36) * min(1.0, abs(sway_val) * 1.3))
+            cv2.arrowedLine(frame, (cx - 4, y_arr), (tip_x, y_arr), (255, 100, 220), 3, tipLength=0.35)
+            cv2.putText(frame, "< IZQ", (box_x + 10, y_arr - 8), cv2.FONT_HERSHEY_DUPLEX, 0.42, (255, 100, 220), 1, cv2.LINE_AA)
+        else:
+            # Centro / Transición rítmica
+            cv2.circle(frame, (cx, y_arr), 5, (0, 255, 200), -1, cv2.LINE_AA)
+
+    elif 'Lado a Lado' in name:
+        y_arr = box_y + int(box_h * 0.72)
+        step_val = math.sin(t * 4.0)
+        cv2.line(frame, (box_x + 16, y_arr), (box_x + box_w - 16, y_arr), (60, 60, 80), 1, cv2.LINE_AA)
+        if step_val > 0.08:
+            cv2.arrowedLine(frame, (cx, y_arr), (box_x + box_w - 18, y_arr), col, 3, tipLength=0.35)
+            cv2.putText(frame, "PASO DER >>", (cx - 15, y_arr - 8), cv2.FONT_HERSHEY_DUPLEX, 0.40, col, 1, cv2.LINE_AA)
+        elif step_val < -0.08:
+            cv2.arrowedLine(frame, (cx, y_arr), (box_x + 18, y_arr), col, 3, tipLength=0.35)
+            cv2.putText(frame, "<< PASO IZQ", (box_x + 12, y_arr - 8), cv2.FONT_HERSHEY_DUPLEX, 0.40, col, 1, cv2.LINE_AA)
+
+    elif 'Cabeza' in name:
+        y_head = box_y + int(box_h * 0.16)
+        nod_val = math.sin(t * 6.0)
+        if nod_val > 0.08:
+            cv2.arrowedLine(frame, (cx + 12, y_head), (cx + 38, y_head), (140, 255, 80), 2, tipLength=0.4)
+        elif nod_val < -0.08:
+            cv2.arrowedLine(frame, (cx - 12, y_head), (cx - 38, y_head), (140, 255, 80), 2, tipLength=0.4)
+
     elif 'Salto' in name:
-        cv2.arrowedLine(frame, (box_x + 20, cy + 20), (box_x + 20, box_y + 20), (0, 255, 120), 3, tipLength=0.4)
-        cv2.arrowedLine(frame, (box_x + box_w - 20, cy + 20), (box_x + box_w - 20, box_y + 20), (0, 255, 120), 3, tipLength=0.4)
+        jump_pulse = int(math.sin(t * 4.5) * 8)
+        cv2.arrowedLine(frame, (box_x + 20, cy + 25 + jump_pulse), (box_x + 20, box_y + 15), (0, 255, 120), 3, tipLength=0.4)
+        cv2.arrowedLine(frame, (box_x + box_w - 20, cy + 25 + jump_pulse), (box_x + box_w - 20, box_y + 15), (0, 255, 120), 3, tipLength=0.4)
+
     elif 'Agacharse' in name:
-        cv2.arrowedLine(frame, (box_x + 20, box_y + 30), (box_x + 20, cy + 30), (100, 180, 255), 3, tipLength=0.4)
-        cv2.arrowedLine(frame, (box_x + box_w - 20, box_y + 30), (box_x + box_w - 20, cy + 30), (100, 180, 255), 3, tipLength=0.4)
+        squat_pulse = int(abs(math.sin(t * 3.5)) * 10)
+        cv2.arrowedLine(frame, (box_x + 20, box_y + 25), (box_x + 20, cy + 25 + squat_pulse), (100, 180, 255), 3, tipLength=0.4)
+        cv2.arrowedLine(frame, (box_x + box_w - 20, box_y + 25), (box_x + box_w - 20, cy + 25 + squat_pulse), (100, 180, 255), 3, tipLength=0.4)
+
     elif 'Gir' in name:
         cv2.ellipse(frame, (cx, cy + 15), (box_w // 3, 16), 0, -20, 240, (0, 215, 255), 3, cv2.LINE_AA)
         cv2.putText(frame, "360", (cx - 20, box_y + box_h - 15), cv2.FONT_HERSHEY_DUPLEX, 0.60, (0, 215, 255), 1, cv2.LINE_AA)
+
+    elif 'Boxeo' in name:
+        jab_v = math.sin(t * 8.5)
+        y_jab = box_y + int(box_h * 0.28)
+        if jab_v > 0.1:
+            cv2.arrowedLine(frame, (cx - 15, y_jab), (cx + 25, y_jab), (80, 130, 255), 2, tipLength=0.4)
+        elif jab_v < -0.1:
+            cv2.arrowedLine(frame, (cx + 15, y_jab), (cx - 25, y_jab), (80, 130, 255), 2, tipLength=0.4)
 
 
 # =====================================================================

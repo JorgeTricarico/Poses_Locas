@@ -637,6 +637,10 @@ def test_visual_and_auditor():
 def test_feature_toggles_and_subsystems():
     run_feature_and_toggles_tests()
 
+def test_illustrations_and_movement():
+    from test_pose_illustrations import run_all_illustration_tests
+    run_all_illustration_tests()
+
 def run_all():
     print("==================================================")
     print("      POSES LOCAS - SUITE COMPLETA DE TESTS       ")
@@ -647,6 +651,8 @@ def run_all():
     run_cognitive_and_profile_tests()
     run_visual_and_auditor_tests()
     run_feature_and_toggles_tests()
+    from test_pose_illustrations import run_all_illustration_tests
+    run_all_illustration_tests()
     print("==================================================")
     print("      TODO CHECKQUEADO Y APROBADO EXITOSAMENTE    ")
     print("==================================================")

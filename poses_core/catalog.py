@@ -52,7 +52,7 @@ POSES = [
     {
         'name': 'Baila! Mueve Caderas', 'color': (255, 100, 180), 'icon_name': 'pose_caderas',
         'dynamic': True, 'checks': check_shake_hips,
-        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.38, 0.60), R_WRIST: (0.62, 0.60), L_HIP: (0.34, 0.62), R_HIP: (0.50, 0.62) },
+        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.36, 0.58), R_WRIST: (0.64, 0.58), L_HIP: (0.42, 0.60), R_HIP: (0.58, 0.60) },
         'tags': ['cardio', 'dance', 'fun']
     },
     {
@@ -100,7 +100,7 @@ POSES = [
     {
         'name': 'De Lado a Lado!', 'color': (50, 255, 255),
         'dynamic': True, 'checks': check_move_side_to_side,
-        'ref': { NOSE: (0.68, 0.14), L_SHOULDER: (0.56, 0.32), R_SHOULDER: (0.80, 0.32), L_ELBOW: (0.48, 0.45), R_ELBOW: (0.90, 0.45), L_WRIST: (0.54, 0.60), R_WRIST: (0.86, 0.60), L_HIP: (0.60, 0.62), R_HIP: (0.76, 0.62) },
+        'ref': { NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.45), R_ELBOW: (0.72, 0.45), L_WRIST: (0.34, 0.60), R_WRIST: (0.66, 0.60), L_HIP: (0.42, 0.60), R_HIP: (0.58, 0.60) },
         'tags': ['junior', 'cardio', 'fun']
     },
     {
