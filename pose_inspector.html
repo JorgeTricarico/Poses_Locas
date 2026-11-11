@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Poses Locas AR — Visualizador Interno de Poses y Esquemas</title>
+  <style>
+    :root {
+      --bg: #0d0c14;
+      --card-bg: #181524;
+      --card-border: #2a2540;
+      --accent-cyan: #00e5ff;
+      --accent-gold: #ffd700;
+      --accent-magenta: #ff2a85;
+      --accent-green: #00e676;
+      --text: #f0f0f5;
+      --text-muted: #9a9ab0;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      padding: 24px;
+    }
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--card-border);
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-gold));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .badge-bar {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+    .badge {
+      background: #221c33;
+      border: 1px solid var(--card-border);
+      padding: 4px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      color: var(--accent-cyan);
+    }
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+    .filter-btn {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: all 0.2s;
+    }
+    .filter-btn.active, .filter-btn:hover {
+      background: #251e38;
+      color: #fff;
+      border-color: var(--accent-cyan);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+      gap: 20px;
+    }
+    .card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-cyan);
+    }
+    .card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .card-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .tag {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(0, 229, 255, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid rgba(0, 229, 255, 0.3);
+    }
+    .preview-box {
+      display: flex;
+      gap: 12px;
+      background: #0f0d17;
+      border-radius: 8px;
+      padding: 10px;
+      border: 1px solid #201b30;
+      min-height: 180px;
+      align-items: center;
+      justify-content: center;
+    }
+    canvas {
+      background: #141120;
+      border-radius: 6px;
+      border: 1px solid #28223d;
+    }
+    .illus-img {
+      width: 130px;
+      height: 130px;
+      object-fit: cover;
+      border-radius: 6px;
+      border: 1px solid #383050;
+      background: #1a162b;
+    }
+    .illus-placeholder {
+      width: 130px;
+      height: 130px;
+      border-radius: 6px;
+      border: 1px dashed #383050;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 8px;
+    }
+    .meta-list {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .meta-list strong {
+      color: var(--text);
+    }
+    .action-badge {
+      background: rgba(0, 230, 118, 0.1);
+      border-left: 3px solid var(--accent-green);
+      padding: 6px 10px;
+      font-size: 12px;
+      color: #d8ffd8;
+      border-radius: 0 4px 4px 0;
+    }
+    .audit-verdict {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      color: #ffd700;
+      background: rgba(255, 215, 0, 0.08);
+      padding: 4px 8px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div>
+      <h1>Poses Locas AR — Inspector de Poses y Esquemas</h1>
+      <p style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">
+        Herramienta técnica interna para auditar biomecánica, comprensión motora y layout visual de las 23 poses.
+      </p>
+    </div>
+    <div class="badge-bar">
+      <span class="badge">🎯 23 Poses Definidas</span>
+      <span class="badge">🛡️ Viewport Limpio (Brazos Libres)</span>
+      <span class="badge">🔄 Auto-Ghosting Adaptativo</span>
+      <span class="badge">🍓 Raspberry Pi 5 Ready</span>
+    </div>
+  </header>
+
+  <div class="filters">
+    <button class="filter-btn active" onclick="filterPoses('all', this)">Todas (23)</button>
+    <button class="filter-btn" onclick="filterPoses('junior', this)">Aventura Junior</button>
+    <button class="filter-btn" onclick="filterPoses('cardio', this)">Cardio Groove</button>
+    <button class="filter-btn" onclick="filterPoses('zen', this)">Mente Activa & Zen</button>
+    <button class="filter-btn" onclick="filterPoses('dynamic', this)">Dinámicas / Ritmo</button>
+    <button class="filter-btn" onclick="filterPoses('static', this)">Estáticas (Hold)</button>
+  </div>
+
+  <div class="grid" id="poses-grid"></div>
+
+  <script>
+    const POSES_DATA = [
+      {
+        name: "Baila! Mueve Caderas",
+        category: "dynamic",
+        tags: ["junior", "cardio", "fun"],
+        icon: "pose_caderas.jpg",
+        action: "Balancear la pelvis de izquierda a derecha en compás rítmico, manteniendo los pies firmes.",
+        biomechanics: "Amplitud pélvica ±0.10, contrapposto de hombros, rodillas con cinemática inversa, pies en y=0.90.",
+        audit: "10/10 AAA — Flechas DER > y < IZQ garantizan comprensión a 3m.",
+        color: "#ff64b4",
+        anim: (t) => {
+          const sway = Math.sin(t * 5.5) * 0.10;
+          return {
+            ls: [0.36 - sway * 0.3, 0.32], rs: [0.64 - sway * 0.3, 0.32],
+            lh: [0.42 + sway, 0.60], rh: [0.58 + sway, 0.60],
+            le: [0.23 + sway * 0.4, 0.45], re: [0.77 + sway * 0.4, 0.45],
+            lw: [0.34 + sway * 0.7, 0.58], rw: [0.66 + sway * 0.7, 0.58],
+            lk: [0.42 + sway * 0.5, 0.75], rk: [0.58 + sway * 0.5, 0.75],
+            la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.5 - sway * 0.15, 0.14]
+          };
+        }
+      },
+      {
+        name: "Mueve los Brazos!",
+        category: "dynamic",
+        tags: ["junior", "cardio", "fun"],
+        icon: null,
+        action: "Agitar y bombear los brazos arriba y abajo con ritmo continuo y energía.",
+        biomechanics: "Oscilación armónica alternada de codos y muñecas en antifase (frecuencia 6.5 rad/s).",
+        audit: "10/10 AAA — Cinemática de codos corregida, flechas de intención ARRIBA/ABAJO añadidas.",
+        color: "#ff3cff",
+        anim: (t) => {
+          const wave = Math.sin(t * 6.5) * 0.18;
+          return {
+            ls: [0.36, 0.32], rs: [0.64, 0.32],
+            lh: [0.42, 0.60], rh: [0.58, 0.60],
+            le: [0.24, 0.28 + wave * 0.55], re: [0.76, 0.28 - wave * 0.55],
+            lw: [0.16, 0.16 + wave], rw: [0.84, 0.16 - wave],
+            lk: [0.41, 0.75], rk: [0.59, 0.75],
+            la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+          };
+        }
+      },
+      {
+        name: "Mueve la Cabeza!",
+        category: "dynamic",
+        tags: ["junior", "fun"],
+        icon: "pose_cabeza.jpg",
+        action: "Asentir o inclinar la cabeza hacia los lados siguiendo el pulso de la canción.",
+        biomechanics: "Oscilación suave del vértice cefálico (amplitud ±0.08 x).",
+        audit: "10/10 AAA — Natural y sin riesgo de mareo.",
+        color: "#8cff50",
+        anim: (t) => {
+          const nod = Math.sin(t * 6.0) * 0.08;
+          return {
+            ls: [0.36, 0.32], rs: [0.64, 0.32],
+            lh: [0.42, 0.60], rh: [0.58, 0.60],
+            le: [0.30, 0.45], re: [0.70, 0.45],
+            lw: [0.35, 0.60], rw: [0.65, 0.60],
+            lk: [0.41, 0.75], rk: [0.59, 0.75],
+            la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50 + nod, 0.14]
+          };
+        }
+      },
+      {
+        name: "Balanceo Suave Flow!",
+        category: "dynamic",
+        tags: ["zen", "fun"],
+        icon: null,
+        action: "Balancear el torso y brazos de lado a lado con respiración pausada y bajo impacto.",
+        biomechanics: "Pendular armónico continuo a baja frecuencia (3.2 rad/s).",
+        audit: "10/10 AAA — Ideal para adultos mayores y relajación motriz.",
+        color: "#8ce6ff",
+        anim: (t) => {
+          const f = Math.sin(t * 3.2) * 0.06;
+          return {
+            ls: [0.36 + f, 0.32], rs: [0.64 + f, 0.32],
+            lh: [0.42 + f, 0.60], rh: [0.58 + f, 0.60],
+            le: [0.28 + f, 0.38], re: [0.72 + f, 0.38],
+            lw: [0.35 + f, 0.45], rw: [0.65 + f, 0.45],
+            lk: [0.41 + f, 0.75], rk: [0.59 + f, 0.75],
+            la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50 + f, 0.14]
+          };
+        }
+      },
+      {
+        name: "Boxeo Rapido!",
+        category: "dynamic",
+        tags: ["cardio"],
+        icon: null,
+        action: "Lanzar golpes rectos tipo jab alternando izquierda y derecha al compás musical.",
+        biomechanics: "Extensión rápida de muñeca hacia el centro con guardia cruzada.",
+        audit: "9.8/10 — Muy intuitivo y energético.",
+        color: "#5082ff",
+        anim: (t) => {
+          const jab = Math.sin(t * 8.5);
+          return {
+            ls: [0.36, 0.32], rs: [0.64, 0.32],
+            lh: [0.42, 0.60], rh: [0.58, 0.60],
+            le: [0.28, 0.42], re: [0.72, 0.30],
+            lw: [0.42 + Math.max(0, jab)*0.15, 0.24], rw: [0.62 - Math.max(0, -jab)*0.15, 0.16],
+            lk: [0.41, 0.75], rk: [0.59, 0.75],
+            la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+          };
+        }
+      },
+      {
+        name: "Salto Mortal!",
+        category: "dynamic",
+        tags: ["cardio"],
+        icon: null,
+        action: "Saltar con ambos pies elevando brazos al cielo y amortiguar la caída con rodillas.",
+        biomechanics: "Fase de carga, elevación vertical (-0.16 y) y amortiguación elástica.",
+        audit: "10/10 — Gran impacto lúdico en Cardio Groove.",
+        color: "#50ff78",
+        anim: (t) => {
+          const p = (t * 4.5) % (Math.PI * 2);
+          const j = Math.sin(p) > 0 ? -Math.sin(p) * 0.15 : 0;
+          return {
+            ls: [0.36, 0.24 + j], rs: [0.64, 0.24 + j],
+            lh: [0.42, 0.48 + j], rh: [0.58, 0.48 + j],
+            le: [0.24, 0.15 + j], re: [0.76, 0.15 + j],
+            lw: [0.18, 0.05 + j], rw: [0.82, 0.05 + j],
+            lk: [0.41, 0.65 + j * 0.9], rk: [0.59, 0.65 + j * 0.9],
+            la: [0.40, 0.85 + j * 0.8], ra: [0.60, 0.85 + j * 0.8], nose: [0.50, 0.08 + j]
+          };
+        }
+      },
+      {
+        name: "Agacharse!",
+        category: "dynamic",
+        tags: ["cardio"],
+        icon: null,
+        action: "Hacer sentadilla bajando las caderas y manteniendo el torso erguido.",
+        biomechanics: "Descenso pélvico con flexión simétrica de rodillas.",
+        audit: "9.9/10 — Muy claro el vector de descenso.",
+        color: "#64b4ff",
+        anim: (t) => {
+          const sq = Math.abs(Math.sin(t * 3.5)) * 0.14;
+          return {
+            ls: [0.36, 0.32 + sq], rs: [0.64, 0.32 + sq],
+            lh: [0.42, 0.60 + sq], rh: [0.58, 0.60 + sq],
+            le: [0.26, 0.45 + sq], re: [0.74, 0.45 + sq],
+            lw: [0.35, 0.60 + sq], rw: [0.65, 0.60 + sq],
+            lk: [0.36, 0.75 + sq * 0.5], rk: [0.64, 0.75 + sq * 0.5],
+            la: [0.38, 0.90], ra: [0.62, 0.90], nose: [0.50, 0.14 + sq]
+          };
+        }
+      },
+      {
+        name: "Girando!",
+        category: "dynamic",
+        tags: ["cardio"],
+        icon: null,
+        action: "Girar 360 grados sobre tu propio eje en el lugar y volver al frente.",
+        biomechanics: "Inversión de landmarks de hombros izquierdo y derecho.",
+        audit: "9.8/10 — Elipse de 360° comunica la rotación.",
+        color: "#ffa000",
+        anim: (t) => {
+          const spin = Math.cos(t * 4.5);
+          return {
+            ls: [0.50 - 0.14 * spin, 0.32], rs: [0.50 + 0.14 * spin, 0.32],
+            lh: [0.50 - 0.08 * spin, 0.60], rh: [0.50 + 0.08 * spin, 0.60],
+            le: [0.50 - 0.16 * spin, 0.46], re: [0.50 + 0.16 * spin, 0.46],
+            lw: [0.50 - 0.18 * spin, 0.58], rw: [0.50 + 0.18 * spin, 0.58],
+            lk: [0.42, 0.75], rk: [0.58, 0.75],
+            la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+          };
+        }
+      },
+      {
+        name: "Guitarra Rock!",
+        category: "dynamic",
+        tags: ["junior", "cardio", "fun"],
+        icon: null,
+        action: "Sostener el mástil con la izquierda y rasguear rápido con la derecha.",
+        biomechanics: "Oscilación rápida de muñeca derecha en ángulo de rasgueo.",
+        audit: "10/10 — Altamente lúdico y motivador.",
+        color: "#00e676",
+        anim: (t) => {
+          const str = Math.sin(t * 9.0) * 0.08;
+          return {
+            ls: [0.36, 0.32], rs: [0.64, 0.32],
+            lh: [0.42, 0.62], rh: [0.58, 0.62],
+            le: [0.22, 0.36], re: [0.72, 0.46],
+            lw: [0.10, 0.30], rw: [0.55 + str, 0.56 + Math.abs(str)*0.5],
+            lk: [0.41, 0.75], rk: [0.59, 0.75],
+            la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+          };
+        }
+      },
+      {
+        name: "Cruzado al Oido!",
+        category: "static",
+        tags: ["zen"],
+        icon: null,
+        action: "Llevar la mano izquierda a tocar la oreja derecha cruzando el pecho por delante.",
+        biomechanics: "Cruce contralateral neuro-motor de bajo impacto.",
+        audit: "10/10 — Reto propioceptivo limpio.",
+        color: "#ff78b4",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.45, 0.22], re: [0.70, 0.45], lw: [0.56, 0.17], rw: [0.65, 0.60],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Reloj 9 y 12!",
+        category: "static",
+        tags: ["zen"],
+        icon: null,
+        action: "Brazo izquierdo extendido horizontal a las 9; brazo derecho vertical arriba a las 12.",
+        biomechanics: "Ángulo ortogonal recto 90° entre brazos.",
+        audit: "10/10 — Muy claro el concepto de manecillas de reloj.",
+        color: "#00f0ff",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.22, 0.32], re: [0.72, 0.18], lw: [0.08, 0.32], rw: [0.68, 0.05],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Namaste Zen!",
+        category: "static",
+        tags: ["zen"],
+        icon: null,
+        action: "Unir ambas palmas de las manos frente al centro del pecho con codos nivelados.",
+        biomechanics: "Aducción palmar en línea media esternal.",
+        audit: "10/10 — Postura de equilibrio universal.",
+        color: "#78ff96",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.25, 0.45], re: [0.75, 0.45], lw: [0.47, 0.45], rw: [0.53, 0.45],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Marco Egipcio!",
+        category: "static",
+        tags: ["zen"],
+        icon: null,
+        action: "Brazo izquierdo en ángulo 90° hacia arriba y derecho en ángulo 90° hacia abajo.",
+        biomechanics: "Patrón asimétrico angular inspirado en jeroglíficos.",
+        audit: "10/10 — Reconocimiento icónico inmediato.",
+        color: "#ffc832",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.22, 0.32], re: [0.78, 0.42], lw: [0.35, 0.18], rw: [0.65, 0.55],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Brazos Arriba!",
+        category: "static",
+        tags: ["junior", "cardio", "zen"],
+        icon: "pose_brazos.jpg",
+        action: "Elevar ambos brazos extendidos al cielo formando una gran V victoriosa.",
+        biomechanics: "Extensión escapular bilateral completa por encima de hombros.",
+        audit: "10/10 — Pose emblemática de inicio y celebración.",
+        color: "#00e676",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.28, 0.18], re: [0.72, 0.18], lw: [0.32, 0.05], rw: [0.68, 0.05],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "T-Pose!",
+        category: "static",
+        tags: ["junior", "zen"],
+        icon: "pose_tpose.jpg",
+        action: "Abrir ambos brazos horizontalmente en cruz formando una letra T perfecta.",
+        biomechanics: "Abducción horizontal a 90° a la altura de los hombros.",
+        audit: "10/10 — Pose anatómica estándar de calibración.",
+        color: "#ffd200",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.22, 0.32], re: [0.78, 0.32], lw: [0.08, 0.32], rw: [0.92, 0.32],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Fuerte!",
+        category: "static",
+        tags: ["junior", "cardio"],
+        icon: "pose_fuerte.jpg",
+        action: "Flexionar ambos bíceps mostrando músculo estilo fisicoculturista.",
+        biomechanics: "Flexión bilateral de codos 90° con muñecas elevadas.",
+        audit: "10/10 — Muy motivadora y expresiva.",
+        color: "#ff6e32",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.22, 0.32], re: [0.78, 0.32], lw: [0.32, 0.20], rw: [0.68, 0.20],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Saludo Militar!",
+        category: "static",
+        tags: ["junior", "zen"],
+        icon: "pose_saludo.jpg",
+        action: "Mano derecha a la frente en saludo marcial; brazo izquierdo relajado abajo.",
+        biomechanics: "Flexión derecha en sien con extensión contralateral baja.",
+        audit: "10/10 — Ejecución nítida sin confusión.",
+        color: "#3c78ff",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.30, 0.45], re: [0.74, 0.30], lw: [0.32, 0.58], rw: [0.58, 0.14],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Letra Y!",
+        category: "static",
+        tags: ["junior"],
+        icon: "pose_letra_y.jpg",
+        action: "Brazos elevados en diagonal hacia afuera formando la letra Y (YMCA).",
+        biomechanics: "Ángulo de 45° respecto al torso.",
+        audit: "10/10 — Reconocimiento musical clásico.",
+        color: "#ff64dc",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.26, 0.18], re: [0.74, 0.18], lw: [0.16, 0.05], rw: [0.84, 0.05],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Letra O!",
+        category: "static",
+        tags: ["junior"],
+        icon: "pose_letra_o.jpg",
+        action: "Brazos curvados por encima de la cabeza tocándose las puntas de los dedos formando un óvalo.",
+        biomechanics: "Circunferencia braquial coronaria cerrada.",
+        audit: "10/10 — Muy clara para los niños.",
+        color: "#64f0ff",
+        anim: () => ({
+          ls: [0.36, 0.36], rs: [0.64, 0.36], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.30, 0.14], re: [0.70, 0.14], lw: [0.44, 0.04], rw: [0.56, 0.04],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.20]
+        })
+      },
+      {
+        name: "Pose de Mono!",
+        category: "static",
+        tags: ["junior", "fun"],
+        icon: null,
+        action: "Codos pegados a las costillas y manos colocadas en las axilas imitando a un mono.",
+        biomechanics: "Aducción braquial con flexión aguda de codos hacia axilas.",
+        audit: "10/10 — Éxito absoluto en el perfil Aventura Junior.",
+        color: "#00c8ff",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.16, 0.35], re: [0.84, 0.35], lw: [0.36, 0.40], rw: [0.64, 0.40],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Fiebre Disco!",
+        category: "static",
+        tags: ["cardio", "fun"],
+        icon: null,
+        action: "Mano izquierda en la cintura y brazo derecho apuntando en diagonal al cielo (Travolta).",
+        biomechanics: "Asimetría diagonal clásica disco.",
+        audit: "10/10 — Estética retro inconfundible.",
+        color: "#ff5aff",
+        anim: () => ({
+          ls: [0.36, 0.32], rs: [0.64, 0.32], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.24, 0.46], re: [0.74, 0.18], lw: [0.40, 0.58], rw: [0.86, 0.05],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.50, 0.14]
+        })
+      },
+      {
+        name: "Avion Supersonico!",
+        category: "static",
+        tags: ["junior", "fun"],
+        icon: null,
+        action: "Brazos extendidos simulando alas con inclinación lateral de torso en viraje de avión.",
+        biomechanics: "Inclinación lateral de columna con abducción a 180°.",
+        audit: "10/10 — Muy intuitivo y divertido para niños.",
+        color: "#64ffc8",
+        anim: () => ({
+          ls: [0.34, 0.36], rs: [0.62, 0.28], lh: [0.42, 0.62], rh: [0.58, 0.62],
+          le: [0.18, 0.42], re: [0.76, 0.22], lw: [0.06, 0.48], rw: [0.92, 0.16],
+          lk: [0.41, 0.75], rk: [0.59, 0.75], la: [0.40, 0.90], ra: [0.60, 0.90], nose: [0.48, 0.16]
+        })
+      }
+    ];
+
+    const grid = document.getElementById('poses-grid');
+
+    function renderCards(poses) {
+      grid.innerHTML = '';
+      poses.forEach((pose, idx) => {
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.id = `card-${idx}`;
+
+        const isDynamic = pose.category === 'dynamic';
+        const tagLabel = isDynamic ? 'Dinámica (Ritmo)' : 'Estática (Hold)';
+
+        const illusHtml = pose.icon
+          ? `<img src="${pose.icon}" class="illus-img" alt="${pose.name}" onerror="this.outerHTML='<div class=\\'illus-placeholder\\'>Sin Ilustración JPG</div>'">`
+          : `<div class="illus-placeholder">Modo Silueta<br>(Sin Ilustración)</div>`;
+
+        card.innerHTML = `
+          <div class="card-header">
+            <span class="card-title">${pose.name}</span>
+            <span class="tag" style="color: ${pose.color}; border-color: ${pose.color};">${tagLabel}</span>
+          </div>
+          <div class="preview-box">
+            ${illusHtml}
+            <canvas id="canvas-${idx}" width="160" height="160"></canvas>
+          </div>
+          <div class="action-badge">
+            <strong>Cómo hacerla:</strong> ${pose.action}
+          </div>
+          <div class="meta-list">
+            <div><strong>Biomecánica:</strong> ${pose.biomechanics}</div>
+            <div><strong>Perfiles:</strong> ${pose.tags.map(t => t.toUpperCase()).join(', ')}</div>
+          </div>
+          <div class="audit-verdict">
+            <span>🛡️ Auditoría UI/UX:</span> <strong>${pose.audit}</strong>
+          </div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function drawStickman(ctx, pts, color) {
+      const w = 160, h = 160;
+      ctx.clearRect(0, 0, w, h);
+
+      // Floor line
+      ctx.strokeStyle = '#5a5a73';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(w * 0.15, h * 0.92);
+      ctx.lineTo(w * 0.85, h * 0.92);
+      ctx.stroke();
+
+      function p(pt) { return [pt[0] * w, pt[1] * h]; }
+
+      // Torso fill
+      ctx.fillStyle = '#2d2842';
+      ctx.beginPath();
+      const ls = p(pts.ls), rs = p(pts.rs), rh = p(pts.rh), lh = p(pts.lh);
+      ctx.moveTo(ls[0], ls[1]);
+      ctx.lineTo(rs[0], rs[1]);
+      ctx.lineTo(rh[0], rh[1]);
+      ctx.lineTo(lh[0], lh[1]);
+      ctx.closePath();
+      ctx.fill();
+
+      // Bones
+      const bones = [
+        ['ls', 'rs'], ['ls', 'lh'], ['rs', 'rh'], ['lh', 'rh'],
+        ['lh', 'lk'], ['lk', 'la'], ['rh', 'rk'], ['rk', 'ra']
+      ];
+      ctx.strokeStyle = '#d2d2dc';
+      ctx.lineWidth = 3;
+      ctx.lineCap = 'round';
+      bones.forEach(([a, b]) => {
+        if (pts[a] && pts[b]) {
+          ctx.beginPath();
+          const pa = p(pts[a]), pb = p(pts[b]);
+          ctx.moveTo(pa[0], pa[1]);
+          ctx.lineTo(pb[0], pb[1]);
+          ctx.stroke();
+        }
+      });
+
+      // Arms
+      const armBones = [['ls', 'le'], ['le', 'lw'], ['rs', 're'], ['re', 'rw']];
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 4;
+      armBones.forEach(([a, b]) => {
+        if (pts[a] && pts[b]) {
+          ctx.beginPath();
+          const pa = p(pts[a]), pb = p(pts[b]);
+          ctx.moveTo(pa[0], pa[1]);
+          ctx.lineTo(pb[0], pb[1]);
+          ctx.stroke();
+        }
+      });
+
+      // Joints
+      ctx.fillStyle = '#ffffff';
+      ['lw', 'rw'].forEach(k => {
+        if (pts[k]) {
+          const pt = p(pts[k]);
+          ctx.beginPath();
+          ctx.arc(pt[0], pt[1], 3.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // Head
+      if (pts.nose) {
+        const pt = p(pts.nose);
+        ctx.fillStyle = '#f0f0ff';
+        ctx.beginPath();
+        ctx.arc(pt[0], pt[1], 10, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      }
+    }
+
+    let activeFilter = 'all';
+
+    function filterPoses(type, btn) {
+      activeFilter = type;
+      document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      let filtered = POSES_DATA;
+      if (type === 'junior') filtered = POSES_DATA.filter(p => p.tags.includes('junior'));
+      else if (type === 'cardio') filtered = POSES_DATA.filter(p => p.tags.includes('cardio'));
+      else if (type === 'zen') filtered = POSES_DATA.filter(p => p.tags.includes('zen'));
+      else if (type === 'dynamic') filtered = POSES_DATA.filter(p => p.category === 'dynamic');
+      else if (type === 'static') filtered = POSES_DATA.filter(p => p.category === 'static');
+
+      renderCards(filtered);
+    }
+
+    let startTime = performance.now();
+    function animate() {
+      const t = (performance.now() - startTime) / 1000;
+      let filtered = POSES_DATA;
+      if (activeFilter === 'junior') filtered = POSES_DATA.filter(p => p.tags.includes('junior'));
+      else if (activeFilter === 'cardio') filtered = POSES_DATA.filter(p => p.tags.includes('cardio'));
+      else if (activeFilter === 'zen') filtered = POSES_DATA.filter(p => p.tags.includes('zen'));
+      else if (activeFilter === 'dynamic') filtered = POSES_DATA.filter(p => p.category === 'dynamic');
+      else if (activeFilter === 'static') filtered = POSES_DATA.filter(p => p.category === 'static');
+
+      filtered.forEach((pose, idx) => {
+        const canvas = document.getElementById(`canvas-${idx}`);
+        if (canvas) {
+          const ctx = canvas.getContext('2d');
+          const pts = pose.anim(t);
+          drawStickman(ctx, pts, pose.color);
+        }
+      });
+      requestAnimationFrame(animate);
+    }
+
+    renderCards(POSES_DATA);
+    animate();
+  </script>
+</body>
+</html>

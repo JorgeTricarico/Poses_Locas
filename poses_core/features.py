@@ -39,6 +39,7 @@ class FeatureFlags:
         self.enable_custom_ghost: bool = os.environ.get("POSES_ENABLE_CUSTOM_GHOST", "0").strip() == "1"
         self.enable_reactive_audio: bool = os.environ.get("POSES_ENABLE_REACTIVE_AUDIO", "0").strip() == "1"
         self.enable_party_platform: bool = os.environ.get("POSES_ENABLE_PARTY_PLATFORM", "0").strip() == "1"
+        self.enable_stickman_only: bool = os.environ.get("POSES_ENABLE_STICKMAN_ONLY", "0").strip() == "1"
 
     def toggle_duo_mode(self) -> bool:
         self.enable_duo_mode = not self.enable_duo_mode
@@ -56,12 +57,17 @@ class FeatureFlags:
         self.enable_party_platform = not self.enable_party_platform
         return self.enable_party_platform
 
+    def toggle_stickman_only(self) -> bool:
+        self.enable_stickman_only = not self.enable_stickman_only
+        return self.enable_stickman_only
+
     def reset_all(self):
         """Desactiva todas las features restaurando el estado por defecto."""
         self.enable_duo_mode = False
         self.enable_custom_ghost = False
         self.enable_reactive_audio = False
         self.enable_party_platform = False
+        self.enable_stickman_only = False
 
     def as_dict(self) -> Dict[str, bool]:
         return {

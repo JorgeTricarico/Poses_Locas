@@ -53,7 +53,7 @@ POSES = [
         'name': 'Baila! Mueve Caderas', 'color': (255, 100, 180), 'icon_name': 'pose_caderas',
         'dynamic': True, 'checks': check_shake_hips,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.36, 0.58), R_WRIST: (0.64, 0.58), L_HIP: (0.42, 0.60), R_HIP: (0.58, 0.60) },
-        'tags': ['cardio', 'dance', 'fun']
+        'tags': ['junior', 'cardio', 'dance', 'fun']
     },
     {
         'name': 'Mueve la Cabeza!', 'color': (140, 255, 80), 'icon_name': 'pose_cabeza',
@@ -101,7 +101,7 @@ POSES = [
         'name': 'De Lado a Lado!', 'color': (50, 255, 255),
         'dynamic': True, 'checks': check_move_side_to_side,
         'ref': { NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.45), R_ELBOW: (0.72, 0.45), L_WRIST: (0.34, 0.60), R_WRIST: (0.66, 0.60), L_HIP: (0.42, 0.60), R_HIP: (0.58, 0.60) },
-        'tags': ['junior', 'cardio', 'fun']
+        'tags': [], 'disabled': True  # Desactivada por solicitud del usuario (removida de niños y pruebas estáticas)
     },
     {
         'name': 'Guitarra Rock!', 'color': (0, 255, 120),
@@ -234,12 +234,13 @@ PROFILE_KEYS = ['JUNIOR', 'CARDIO', 'ZEN', 'FIESTA']
 
 
 def get_poses_for_profile(profile_key):
-    """Filtra y devuelve las poses elegibles para el perfil activo."""
+    """Filtra y devuelve las poses elegibles para el perfil activo (excluyendo poses desactivadas)."""
+    active_poses = [p for p in POSES if not p.get('disabled', False)]
     if profile_key not in PROFILES or profile_key == 'FIESTA':
-        return POSES
+        return active_poses
     req_tags = PROFILES[profile_key]['tags']
-    matching = [p for p in POSES if any(t in req_tags for t in p.get('tags', []))]
-    return matching if len(matching) >= 4 else POSES
+    matching = [p for p in active_poses if any(t in req_tags for t in p.get('tags', []))]
+    return matching if len(matching) >= 4 else active_poses
 
 
 # =====================================================================

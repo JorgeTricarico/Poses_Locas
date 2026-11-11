@@ -229,6 +229,14 @@ def main():
         # MODO JUEGO ACTIVO (show_menu == False)
         # =========================================================
         if not show_menu:
+            # Reproducción infinita en Modo Libre: reinicia loop si termina la pista
+            if HAS_AUDIO and current_mode == 'LIBRE' and current_song != 'Sin Musica':
+                if not pygame.mixer.music.get_busy():
+                    try:
+                        pygame.mixer.music.load(current_song)
+                        pygame.mixer.music.play(-1)
+                    except Exception:
+                        pass
             if has_person:
                 lm = results.pose_landmarks.landmark
 
@@ -488,53 +496,64 @@ def main():
             cv2.rectangle(frame, (35, 112), (225, 132), (255, 255, 255), 2)
             cv2.putText(frame, f"FEVER {fever_gauge}%", (234, 128), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 130, 255), 1, cv2.LINE_AA)
 
-            # --- ZONA 2: TOP-CENTER BANNER ---
-            bx, by, bw, bh = 385, 18, 465, 102
-            blend_rect_roi(frame, bx, by, bw, bh, (15, 15, 25), 0.82)
+            # --- ZONA 2: BANNER INFERIOR CENTRADO CON OPACIDAD ADAPTATIVA ---
+            # Reposicionado abajo para evitar oclusión cuando el jugador levanta los brazos al cielo.
+            # Cuenta con auto-ghosting (desvanecimiento automático) si las manos entran en la zona.
+            bx, by, bw, bh = 390, 634, 500, 70
             banner_col = (0, 215, 255) if current_pose.get('variant') == 'GOLD' else (
                 (255, 230, 0) if current_pose.get('variant') == 'SPEED' else current_pose.get('color', (0, 255, 120))
             )
+            # Opacidad adaptativa contra extremidades
+            hand_near_banner = False
+            if has_person:
+                for kp in (L_WRIST, R_WRIST):
+                    if 0.28 <= lm[kp].x <= 0.72 and lm[kp].y >= 0.80:
+                        hand_near_banner = True
+                        break
+            banner_alpha = 0.25 if hand_near_banner else 0.76
+
+            blend_rect_roi(frame, bx, by, bw, bh, (15, 15, 25), banner_alpha)
             cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), banner_col, 2)
 
             pname = current_pose.get('name', '')
-            (tw, _), _ = cv2.getTextSize(pname, cv2.FONT_HERSHEY_DUPLEX, 0.98, 2)
-            cv2.putText(frame, pname, (bx + (bw - tw) // 2, by + 40), cv2.FONT_HERSHEY_DUPLEX, 0.98, banner_col, 2, cv2.LINE_AA)
+            (tw, _), _ = cv2.getTextSize(pname, cv2.FONT_HERSHEY_DUPLEX, 0.88, 2)
+            cv2.putText(frame, pname, (bx + (bw - tw) // 2, by + 30), cv2.FONT_HERSHEY_DUPLEX, 0.88, banner_col, 2, cv2.LINE_AA)
 
             if current_pose.get('dynamic'):
                 cur_act, cur_target, lbl = get_dynamic_progress(pname, state)
                 prog_val = min(1.0, cur_act / max(1, cur_target))
-                cv2.rectangle(frame, (bx + 28, by + 52), (bx + bw - 28, by + 74), (45, 45, 60), -1)
-                cv2.rectangle(frame, (bx + 28, by + 52), (bx + 28 + int((bw - 56) * prog_val), by + 74), banner_col, -1)
-                cv2.rectangle(frame, (bx + 28, by + 52), (bx + bw - 28, by + 74), (255, 255, 255), 2)
-                cv2.putText(frame, lbl, (bx + 40, by + 95), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
+                cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (45, 45, 60), -1)
+                cv2.rectangle(frame, (bx + 24, by + 40), (bx + 24 + int((bw - 48) * prog_val), by + 58), banner_col, -1)
+                cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (255, 255, 255), 1)
+                cv2.putText(frame, lbl, (bx + 35, by + 54), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
             elif not current_pose.get('is_freeze'):
-                cv2.rectangle(frame, (bx + 28, by + 52), (bx + bw - 28, by + 74), (45, 45, 60), -1)
-                cv2.rectangle(frame, (bx + 28, by + 52), (bx + 28 + int((bw - 56) * hold_progress), by + 74), (0, 210, 110), -1)
-                cv2.rectangle(frame, (bx + 28, by + 52), (bx + bw - 28, by + 74), (255, 255, 255), 2)
-                cv2.putText(frame, f"MANTENE: {int(hold_progress * 100)}% (Grace Buffer Activo)", (bx + 60, by + 95), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (210, 255, 220), 1, cv2.LINE_AA)
+                cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (45, 45, 60), -1)
+                cv2.rectangle(frame, (bx + 24, by + 40), (bx + 24 + int((bw - 48) * hold_progress), by + 58), (0, 210, 110), -1)
+                cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (255, 255, 255), 1)
+                cv2.putText(frame, f"MANTENE: {int(hold_progress * 100)}%", (bx + 35, by + 54), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (210, 255, 220), 1, cv2.LINE_AA)
 
-            # --- ZONA 3: TOP-RIGHT DUAL REFERENCE CARD ---
-            rx, ry, rw, rh = 900, 18, 356, 200
+            # --- ZONA 3: TOP-RIGHT DUAL REFERENCE CARD (LIMPIA Y SIN TEXTOS REDUNDANTES) ---
+            rx, ry, rw, rh = 900, 18, 356, 190
             blend_rect_roi(frame, rx, ry, rw, rh, (20, 18, 30), 0.85)
             cv2.rectangle(frame, (rx, ry), (rx + rw, ry + rh), (255, 200, 0), 2)
 
             icon_name = current_pose.get('icon_name')
             illus = load_pose_illustration_clean(icon_name, size=(155, 155)) if icon_name else None
-            if illus is not None:
-                frame[ry + 12:ry + 12 + 155, rx + 12:rx + 12 + 155] = illus
-                cv2.rectangle(frame, (rx + 12, ry + 12), (rx + 167, ry + 167), (90, 90, 115), 1)
-                stick_x, stick_w = rx + 180, 160
+            use_illus = (illus is not None) and (not FEATURES.enable_stickman_only)
+
+            if use_illus:
+                frame[ry + 16:ry + 16 + 155, rx + 12:rx + 12 + 155] = illus
+                cv2.rectangle(frame, (rx + 12, ry + 16), (rx + 167, ry + 171), (90, 90, 115), 1)
+                stick_x, stick_w = rx + 176, 168
             else:
-                stick_x, stick_w = rx + 25, 305
+                # Proporción anatómica centrada cuando no hay imagen o en modo solo silueta
+                stick_x, stick_w = rx + (rw - 190) // 2, 190
 
             ref_pts = get_animated_ref_points(current_pose, current_time)
-            draw_full_body_stickman(frame, stick_x, ry + 10, stick_w, 158, ref_pts, banner_col)
-            draw_intent_arrows_in_box(frame, current_pose, stick_x, ry + 10, stick_w, 158, current_time)
-            cv2.putText(frame, "ILUSTRACION + COACH VIVO", (rx + 42, ry + 190), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 1, cv2.LINE_AA)
+            draw_full_body_stickman(frame, stick_x, ry + 10, stick_w, 165, ref_pts, banner_col)
+            draw_intent_arrows_in_box(frame, current_pose, stick_x, ry + 10, stick_w, 165, current_time)
 
-            # --- ZONA INFERIOR LIBRE DE SOBRECARGA COGNITIVA (100% VISIBILIDAD DE CUERPO) ---
-            # Se ha eliminado el carril de poses futuras para no adelantar pasos, evitar
-            # sobrecarga cognitiva y garantizar que piernas, rodillas y pies sean 100% visibles.
+            # --- RECORDATORIO DISCRETO EN ZONA 1 (FUERA DE SAFE ZONE) ---
             cv2.putText(frame, "Gesto X en pecho = Saltar", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (170, 185, 210), 1, cv2.LINE_AA)
 
             particles.update_and_draw(frame)
@@ -692,10 +711,11 @@ def main():
             feat_text = (
                 f"[D] DUO: {'ON' if FEATURES.enable_duo_mode else 'OFF'}  |  "
                 f"[G] GHOST: {'CUSTOM' if FEATURES.enable_custom_ghost else 'CLASICA'}  |  "
+                f"[I] MODO: {'SILUETA' if FEATURES.enable_stickman_only else 'ILUS+COACH'}  |  "
                 f"[A] AUDIO: {'ON' if FEATURES.enable_reactive_audio else 'OFF'}  |  "
                 f"[J] SALTO PARTY: {'ON' if FEATURES.enable_party_platform else 'OFF'}"
             )
-            cv2.putText(frame, feat_text, (display_w//2 - 370, display_h - 28), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (180, 200, 220), 1, cv2.LINE_AA)
+            cv2.putText(frame, feat_text, (display_w//2 - 420, display_h - 28), cv2.FONT_HERSHEY_SIMPLEX, 0.46, (180, 200, 220), 1, cv2.LINE_AA)
 
         # Diagnóstico de Modo Demo si no hay hardware USB disponible
         # Renderizado SIEMPRE después del flip para garantizar que el texto NUNCA sufra inversión especular
@@ -729,6 +749,9 @@ def main():
         elif key == ord('j'):
             act = FEATURES.toggle_party_platform()
             floating_texts.add(f"SALTO PARTY: {'ACTIVADO' if act else 'DESACTIVADO'}", 40, 250, (0, 255, 255), 1.2)
+        elif key == ord('i'):
+            act = FEATURES.toggle_stickman_only()
+            floating_texts.add(f"MODO VISUAL: {'SOLO SILUETA' if act else 'ILUS + COACH'}", 40, 250, (0, 255, 255), 1.2)
         elif key == ord('n') or key == 32:
             if not show_menu:
                 floating_texts.add("POSE SALTEADA!", 40, 310, (0, 100, 255), 1.3)

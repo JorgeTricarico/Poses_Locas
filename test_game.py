@@ -352,34 +352,33 @@ def run_visual_and_auditor_tests():
     cv2.rectangle(frame_gameplay, (35, 112), (225, 132), (255, 255, 255), 2)
     auditor.register_text(frame_gameplay, "FEVER 75%", 234, 128, cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 130, 255), 1, group="z1")
 
-    # Z2: Top-Center Banner (Pose + Barra Hold)
-    bx, by, bw, bh = 385, 18, 465, 102
-    blend_rect_roi(frame_gameplay, bx, by, bw, bh, (15, 15, 25), 0.85)
+    # Z2: Banner Inferior Centrado con Opacidad Adaptativa (Brazos Libres Arriba)
+    bx, by, bw, bh = 390, 634, 500, 70
+    blend_rect_roi(frame_gameplay, bx, by, bw, bh, (15, 15, 25), 0.76)
     cv2.rectangle(frame_gameplay, (bx, by), (bx + bw, by + bh), (0, 255, 120), 2)
-    auditor.register_box("Banner_Top_Center", bx, by, bw, bh, group="z2")
-    auditor.register_text(frame_gameplay, "BRAZOS ARRIBA!", bx + 82, by + 40, cv2.FONT_HERSHEY_DUPLEX, 1.12, (0, 255, 120), 2, group="z2")
-    cv2.rectangle(frame_gameplay, (bx + 28, by + 52), (bx + bw - 28, by + 74), (45, 45, 60), -1)
-    cv2.rectangle(frame_gameplay, (bx + 28, by + 52), (bx + 28 + int((bw - 56) * 0.78), by + 74), (0, 210, 110), -1)
-    cv2.rectangle(frame_gameplay, (bx + 28, by + 52), (bx + bw - 28, by + 74), (255, 255, 255), 2)
-    auditor.register_text(frame_gameplay, "MANTENE: 78% (Grace Buffer Activo)", bx + 75, by + 95, cv2.FONT_HERSHEY_SIMPLEX, 0.52, (210, 255, 220), 1, group="z2")
+    auditor.register_box("Banner_Bottom_Center", bx, by, bw, bh, group="z2")
+    auditor.register_text(frame_gameplay, "BRAZOS ARRIBA!", bx + 105, by + 30, cv2.FONT_HERSHEY_DUPLEX, 0.88, (0, 255, 120), 2, group="z2")
+    cv2.rectangle(frame_gameplay, (bx + 24, by + 40), (bx + bw - 24, by + 58), (45, 45, 60), -1)
+    cv2.rectangle(frame_gameplay, (bx + 24, by + 40), (bx + 24 + int((bw - 48) * 0.78), by + 58), (0, 210, 110), -1)
+    cv2.rectangle(frame_gameplay, (bx + 24, by + 40), (bx + bw - 24, by + 58), (255, 255, 255), 1)
+    auditor.register_text(frame_gameplay, "MANTENE: 78%", bx + 35, by + 54, cv2.FONT_HERSHEY_SIMPLEX, 0.48, (210, 255, 220), 1, group="z2")
 
-    # Z3: Top-Right Dual Reference Card
-    rx, ry, rw, rh = 900, 18, 356, 200
+    # Z3: Top-Right Dual Reference Card (Limpia sin etiquetas redundantes)
+    rx, ry, rw, rh = 900, 18, 356, 190
     blend_rect_roi(frame_gameplay, rx, ry, rw, rh, (20, 18, 30), 0.85)
     cv2.rectangle(frame_gameplay, (rx, ry), (rx + rw, ry + rh), (255, 200, 0), 2)
     auditor.register_box("Card_Reference_Right", rx, ry, rw, rh, group="z3")
     illus = load_pose_illustration_clean("pose_brazos", size=(155, 155))
     if illus is not None:
-        frame_gameplay[ry + 12:ry + 12 + 155, rx + 12:rx + 12 + 155] = illus
-        cv2.rectangle(frame_gameplay, (rx + 12, ry + 12), (rx + 167, ry + 167), (100, 100, 130), 1)
+        frame_gameplay[ry + 16:ry + 16 + 155, rx + 12:rx + 12 + 155] = illus
+        cv2.rectangle(frame_gameplay, (rx + 12, ry + 16), (rx + 167, ry + 171), (100, 100, 130), 1)
     ref_pts = {
         'nose': (0.5, 0.16), 'ls': (0.36, 0.32), 'rs': (0.64, 0.32),
         'le': (0.28, 0.18), 're': (0.72, 0.18), 'lw': (0.32, 0.05), 'rw': (0.68, 0.05),
         'lh': (0.42, 0.60), 'rh': (0.58, 0.60),
         'lk': (0.41, 0.76), 'rk': (0.59, 0.76), 'la': (0.40, 0.90), 'ra': (0.60, 0.90)
     }
-    draw_full_body_stickman(frame_gameplay, rx + 180, ry + 10, 160, 158, ref_pts, (0, 255, 120))
-    auditor.register_text(frame_gameplay, "ILUSTRACION + COACH VIVO", rx + 42, ry + 190, cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 1, group="z3")
+    draw_full_body_stickman(frame_gameplay, rx + 176, ry + 10, 168, 165, ref_pts, (0, 255, 120))
 
     # Z4: Lateral Izquierdo Flotante (Combos - Sin cajas opacas)
     auditor.register_text(frame_gameplay, "PERFECTO!! +300", 30, 310, cv2.FONT_HERSHEY_DUPLEX, 1.0, (0, 215, 255), 2, group="z4")
@@ -605,15 +604,23 @@ def run_feature_and_toggles_tests():
 def run_regression_tests():
     print("[7/7] Probando Anti-Regresiones Obligatorias (UI/UX y Hardware)...")
 
-    # 1. Anti-regresion: No adelantar poses futuras / No carril inferior (Clean Viewport)
+    # 1. Anti-regresion: Brazos Libres Arriba y Barra Inferior Compacta
     auditor_reg = UILayoutAuditor("Anti_Regression_Gameplay", 1280, 720)
     auditor_reg.register_box("score_box", 20, 18, 290, 132, group="z1")
-    auditor_reg.register_box("banner_box", 385, 18, 465, 102, group="z2")
-    auditor_reg.register_box("ref_card", 900, 18, 356, 200, group="z3")
+    auditor_reg.register_box("ref_card", 900, 18, 356, 190, group="z3")
+    auditor_reg.register_box("bottom_banner", 390, 634, 500, 70, group="z2")
 
-    bottom_boxes = [b for b in auditor_reg.elements if b['y2'] > 580]
-    assert_eq(len(bottom_boxes), 0, "No debe existir carril ni cajas HUD en la franja inferior (y >= 580)")
-    print("      -> Prevencion de sobrecarga cognitiva (Sin carril inferior de pasos futuros) OK!")
+    # Validar que la zona superior central (x:370..890, y:0..130) esté 100% libre para levantar brazos
+    top_center_boxes = [b for b in auditor_reg.elements if b['group'] == 'z2' and b['y1'] < 130]
+    assert_eq(len(top_center_boxes), 0, "La parte superior central debe estar libre para brazos arriba")
+    print("      -> Brazos libres arriba y banner inferior con opacidad adaptativa OK!")
+
+    # 1b. Validar exclusion de 'De Lado a Lado' y reemplazo por 'Caderas' en JUNIOR
+    junior_poses = get_poses_for_profile('JUNIOR')
+    junior_names = [p['name'] for p in junior_poses]
+    assert_true('De Lado a Lado!' not in junior_names, "'De Lado a Lado' debe estar excluida de ninos")
+    assert_true('Baila! Mueve Caderas' in junior_names, "'Baila! Mueve Caderas' debe estar activa para ninos")
+    print("      -> Perfil Junior optimizado (Sin desplazamiento lateral, con baile de caderas) OK!")
 
     # 2. Anti-regresion: Prevencion de Texto Espejado (Text Mirroring Prevention)
     mock_cam = MockVideoCapture()

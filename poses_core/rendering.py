@@ -309,9 +309,22 @@ def get_animated_ref_points(pose_data, t):
     # 8. MUEVE LOS BRAZOS / GIRANDO / GUITARRA
     # =================================================================
     elif 'Mueve los Brazos' in name:
-        wave = math.sin(t * 7.5) * 0.18
-        if 'lw' in pts: pts['lw'] = (pts['lw'][0], 0.26 + wave)
-        if 'rw' in pts: pts['rw'] = (pts['rw'][0], 0.26 - wave)
+        arm_wave = math.sin(t * 6.5) * 0.18
+        # Hombros nivelados y estables
+        pts['ls'] = (0.36, 0.32)
+        pts['rs'] = (0.64, 0.32)
+        # Brazo izquierdo: codo y muñeca se mueven en perfecta continuidad anatómica
+        pts['le'] = (0.24, 0.28 + arm_wave * 0.55)
+        pts['lw'] = (0.16, 0.16 + arm_wave)
+        # Brazo derecho: oscila en antifase armónica (bombeo rítmico alternado)
+        pts['re'] = (0.76, 0.28 - arm_wave * 0.55)
+        pts['rw'] = (0.84, 0.16 - arm_wave)
+        # Base corporal firme sin distorsión
+        pts['lk'] = (0.41, 0.75)
+        pts['rk'] = (0.59, 0.75)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
     elif 'Gir' in name:
         spin_cos = math.cos(t * 4.5)
         for k in list(pts.keys()):
@@ -410,6 +423,20 @@ def draw_intent_arrows_in_box(frame, pose_data, box_x, box_y, box_w, box_h, t):
             cv2.arrowedLine(frame, (cx - 15, y_jab), (cx + 25, y_jab), (80, 130, 255), 2, tipLength=0.4)
         elif jab_v < -0.1:
             cv2.arrowedLine(frame, (cx + 15, y_jab), (cx - 25, y_jab), (80, 130, 255), 2, tipLength=0.4)
+
+    elif 'Mueve los Brazos' in name:
+        wave_arr = math.sin(t * 6.5)
+        arr_ly = int(cy - 12 - wave_arr * 20)
+        arr_ry = int(cy - 12 + wave_arr * 20)
+        if wave_arr > 0:
+            cv2.arrowedLine(frame, (box_x + 18, arr_ly + 20), (box_x + 18, arr_ly - 10), (0, 255, 120), 2, tipLength=0.45)
+        else:
+            cv2.arrowedLine(frame, (box_x + 18, arr_ly - 20), (box_x + 18, arr_ly + 10), (255, 100, 220), 2, tipLength=0.45)
+        if wave_arr < 0:
+            cv2.arrowedLine(frame, (box_x + box_w - 18, arr_ry + 20), (box_x + box_w - 18, arr_ry - 10), (0, 255, 120), 2, tipLength=0.45)
+        else:
+            cv2.arrowedLine(frame, (box_x + box_w - 18, arr_ry - 20), (box_x + box_w - 18, arr_ry + 10), (255, 100, 220), 2, tipLength=0.45)
+        cv2.putText(frame, "ARRIBA / ABAJO", (cx - 42, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (255, 255, 255), 1, cv2.LINE_AA)
 
 
 # =====================================================================
