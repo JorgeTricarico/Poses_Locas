@@ -1,0 +1,11 @@
+[Desktop Entry]
+StartupNotify=true
+Version=1.0
+Name=Poses Locas AR
+Comment=Juego de baile, poses y coordinacion corporal para toda la familia
+Exec=/home/jorge/Juegos/poses_locas/run_game.sh
+Path=/home/jorge/Juegos/poses_locas
+Icon=/home/jorge/Juegos/poses_locas/android_app/icon.png
+Terminal=false
+Type=Application
+Categories=Game;VideoGame;
