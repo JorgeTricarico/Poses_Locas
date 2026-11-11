@@ -532,56 +532,10 @@ def main():
             draw_intent_arrows_in_box(frame, current_pose, stick_x, ry + 10, stick_w, 158, current_time)
             cv2.putText(frame, "ILUSTRACION + COACH VIVO", (rx + 42, ry + 190), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 255, 255), 1, cv2.LINE_AA)
 
-            # --- ZONA 5: CARRIL INFERIOR 2.0 (PICTO-CARDS) ---
-            lane_y = 588
-            blend_rect_roi(frame, 0, lane_y - 26, display_w, 26, (10, 10, 18), 0.78)
-            cv2.putText(frame, "Gesto Brazos en X = Saltar Pose  |  Manos Arriba en Menu = Jugar  |  BPM Beat-Sync: 103 BPM",
-                        (28, lane_y - 7), cv2.FONT_HERSHEY_SIMPLEX, 0.52, (200, 210, 230), 1, cv2.LINE_AA)
-
-            blend_rect_roi(frame, 0, lane_y, display_w, display_h - lane_y, (18, 16, 26), 0.92)
-            cv2.line(frame, (0, lane_y), (display_w, lane_y), (0, 255, 255), 2)
-
-            for i, p in enumerate(pose_queue):
-                cx = int(22 + i * 248 + queue_slide_offset)
-                cy = lane_y + 12
-                cw, ch = 236, 108
-                if cx > display_w:
-                    break
-
-                is_active_card = (i == 0)
-                card_col = (0, 215, 255) if p.get('variant') == 'GOLD' else (
-                    (255, 230, 0) if p.get('variant') == 'SPEED' else p.get('color', (200, 200, 200))
-                )
-                bg = (65, 25, 85) if is_active_card else (35, 32, 48)
-                blend_rect_roi(frame, cx, cy, cw, ch, bg, 0.9)
-                cv2.rectangle(frame, (cx, cy), (cx + cw, cy + ch), card_col, 3 if is_active_card else 1)
-
-                cv2.rectangle(frame, (cx + 6, cy + 6), (cx + 82, cy + ch - 6), (22, 20, 30), -1)
-                pts_card = get_animated_ref_points(p, current_time)
-                draw_full_body_stickman(frame, cx + 8, cy + 8, 72, ch - 16, pts_card, card_col, show_floor=True)
-
-                tag = "AHORA!" if is_active_card else "SIGUIENTE"
-                if p.get('variant') == 'GOLD': tag += " GOLD +500"
-                elif p.get('variant') == 'SPEED': tag += " RELAMPAGO x2"
-                elif p.get('dynamic'): tag += " (RITMO)"
-                else: tag += " (HOLD)"
-
-                tx_off = cx + 90
-                if p.get('variant') == 'GOLD':
-                    draw_star_icon(frame, cx + 98, cy + 28, 8, card_col)
-                    tx_off = cx + 112
-                elif p.get('variant') == 'SPEED':
-                    draw_bolt_icon(frame, cx + 98, cy + 28, 8, card_col)
-                    tx_off = cx + 112
-
-                cv2.putText(frame, tag, (tx_off, cy + 34), cv2.FONT_HERSHEY_SIMPLEX, 0.48, card_col, 1, cv2.LINE_AA)
-
-                words = p['name'].split()
-                if len(words) >= 3:
-                    cv2.putText(frame, " ".join(words[:2]), (cx + 90, cy + 66), cv2.FONT_HERSHEY_DUPLEX, 0.54, (255, 255, 255), 1, cv2.LINE_AA)
-                    cv2.putText(frame, " ".join(words[2:]), (cx + 90, cy + 92), cv2.FONT_HERSHEY_DUPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
-                else:
-                    cv2.putText(frame, p['name'], (cx + 90, cy + 72), cv2.FONT_HERSHEY_DUPLEX, 0.56, (255, 255, 255), 1, cv2.LINE_AA)
+            # --- ZONA INFERIOR LIBRE DE SOBRECARGA COGNITIVA (100% VISIBILIDAD DE CUERPO) ---
+            # Se ha eliminado el carril de poses futuras para no adelantar pasos, evitar
+            # sobrecarga cognitiva y garantizar que piernas, rodillas y pies sean 100% visibles.
+            cv2.putText(frame, "Gesto X en pecho = Saltar", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (170, 185, 210), 1, cv2.LINE_AA)
 
             particles.update_and_draw(frame)
             floating_texts.update_and_draw(frame)
@@ -742,6 +696,14 @@ def main():
                 f"[J] SALTO PARTY: {'ON' if FEATURES.enable_party_platform else 'OFF'}"
             )
             cv2.putText(frame, feat_text, (display_w//2 - 370, display_h - 28), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (180, 200, 220), 1, cv2.LINE_AA)
+
+        # Diagnóstico de Modo Demo si no hay hardware USB disponible
+        # Renderizado SIEMPRE después del flip para garantizar que el texto NUNCA sufra inversión especular
+        if getattr(cap, 'is_mock', False):
+            blend_rect_roi(frame, display_w // 2 - 250, 10, 500, 32, (20, 15, 30), 0.88)
+            cv2.rectangle(frame, (display_w // 2 - 250, 10), (display_w // 2 + 250, 42), (0, 200, 255), 1)
+            cv2.putText(frame, "MODO DEMO: Camara USB no detectada", (display_w // 2 - 200, 31),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 220, 255), 1, cv2.LINE_AA)
 
         cv2.imshow(WINDOW_NAME, frame)
 

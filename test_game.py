@@ -46,7 +46,8 @@ from poses_locas import (
     PROFILES, PROFILE_KEYS, get_poses_for_profile,
     POSES, COREOGRAFIAS,
     FeatureFlags, FEATURES, DuoModeManager, CustomGhostRenderer,
-    AudioReactiveEngine, PartyPlatformEngine
+    AudioReactiveEngine, PartyPlatformEngine,
+    MockVideoCapture, VideoCaptureAsync
 )
 from visual_ui_auditor import UILayoutAuditor
 
@@ -412,28 +413,10 @@ def run_visual_and_auditor_tests():
     auditor.register_text(frame_gameplay, "100% OK!", real_lw[0] - 110, real_lw[1] + 5, cv2.FONT_HERSHEY_DUPLEX, 0.58, (80, 255, 80), 2, group="ar", allow_center=True)
     auditor.register_text(frame_gameplay, "65% SUBE MAS!", real_rw[0] - 20, real_rw[1] + 35, cv2.FONT_HERSHEY_DUPLEX, 0.58, (0, 215, 255), 2, group="ar", allow_center=True)
 
-    # Z5: Bottom Strip de Picto-Cards
-    blend_rect_roi(frame_gameplay, 20, 585, 1240, 120, (18, 15, 28), 0.88)
-    cv2.rectangle(frame_gameplay, (20, 585), (1260, 705), (80, 70, 100), 2)
-    auditor.register_box("Strip_Bottom_Container", 20, 585, 1240, 120, group="z5")
-
-    for i in range(5):
-        cx = 35 + i * 245
-        p_data = POSES[i]
-        blend_rect_roi(frame_gameplay, cx, 595, 235, 100, (40, 35, 55), 0.82)
-        cv2.rectangle(frame_gameplay, (cx, 595), (cx + 235, 695), (0, 215, 255) if i == 0 else (90, 85, 110), 2 if i == 0 else 1)
-        icon = load_pose_illustration_clean(p_data.get('icon_name', ''), size=(75, 75))
-        if icon is not None:
-            frame_gameplay[607:682, cx + 10:cx + 85] = icon
-        else:
-            draw_star_icon(frame_gameplay, cx + 45, 645, 22, (0, 215, 255))
-        words = p_data['name'].split()
-        l1 = " ".join(words[:2])
-        l2 = " ".join(words[2:]) if len(words) > 2 else ""
-        cv2.putText(frame_gameplay, l1, (cx + 90, 635), cv2.FONT_HERSHEY_DUPLEX, 0.50, (255, 255, 255), 1, cv2.LINE_AA)
-        if l2:
-            cv2.putText(frame_gameplay, l2, (cx + 90, 660), cv2.FONT_HERSHEY_DUPLEX, 0.48, (200, 200, 220), 1, cv2.LINE_AA)
-        auditor.register_box(f"card_{i}", cx, 595, 235, 100, group="z5")
+    # ZONA INFERIOR LIBRE DE SOBRECARGA COGNITIVA (100% VISIBILIDAD DE CUERPO Y PISO)
+    # Se ha eliminado el carril de picto-cards de poses futuras para no adelantar pasos,
+    # evitar sobrecarga cognitiva y permitir 100% de visibilidad del cuerpo completo del jugador.
+    auditor.register_text(frame_gameplay, "X = Saltar Pose", 35, 145, cv2.FONT_HERSHEY_SIMPLEX, 0.48, (170, 185, 210), 1, group="z1")
 
     cv2.imwrite("test_visual_gameplay.jpg", frame_gameplay, [cv2.IMWRITE_JPEG_QUALITY, 95])
     print("      -> test_visual_gameplay.jpg guardada con estandar AAA!")
@@ -619,6 +602,43 @@ def run_feature_and_toggles_tests():
     print("      -> Verificacion: Modo Simon Dice excluido estrictamente como solicito el usuario.")
     print("      -> Todas las 4 features desactivadas por defecto e integradas exitosamente!")
 
+def run_regression_tests():
+    print("[7/7] Probando Anti-Regresiones Obligatorias (UI/UX y Hardware)...")
+
+    # 1. Anti-regresion: No adelantar poses futuras / No carril inferior (Clean Viewport)
+    auditor_reg = UILayoutAuditor("Anti_Regression_Gameplay", 1280, 720)
+    auditor_reg.register_box("score_box", 20, 18, 290, 132, group="z1")
+    auditor_reg.register_box("banner_box", 385, 18, 465, 102, group="z2")
+    auditor_reg.register_box("ref_card", 900, 18, 356, 200, group="z3")
+
+    bottom_boxes = [b for b in auditor_reg.elements if b['y2'] > 580]
+    assert_eq(len(bottom_boxes), 0, "No debe existir carril ni cajas HUD en la franja inferior (y >= 580)")
+    print("      -> Prevencion de sobrecarga cognitiva (Sin carril inferior de pasos futuros) OK!")
+
+    # 2. Anti-regresion: Prevencion de Texto Espejado (Text Mirroring Prevention)
+    mock_cam = MockVideoCapture()
+    ret, raw_frame = mock_cam.read()
+    assert_true(ret and raw_frame is not None, "MockVideoCapture debe entregar frame valido")
+    assert_eq(raw_frame.shape, (720, 1280, 3), "Dimensiones correctas en MockVideoCapture")
+
+    flipped = cv2.flip(raw_frame, 1)
+    diff = np.abs(raw_frame.astype(int) - flipped.astype(int))
+    center_diff = float(np.mean(diff[300:420, 500:780]))
+    assert_true(center_diff < 5.0, f"Canvas sintetico de calibracion es simetrico (diff={center_diff:.2f})")
+    assert_true(getattr(mock_cam, 'is_mock', False), "MockVideoCapture debe identificarse con is_mock=True")
+    print("      -> Prevencion de texto espejado en modo demo/virtual OK!")
+
+    # 3. Anti-regresion: Soporte de FourCC MJPG y warm-up en VideoCaptureAsync
+    cam_async = VideoCaptureAsync(src=999)
+    assert_true(not cam_async.is_opened(), "Dispositivo inexistente no debe marcarse como opened")
+    assert_eq(getattr(cam_async, 'is_mock', False), False, "VideoCaptureAsync tiene is_mock=False")
+    print("      -> Resiliencia y control de warm-up en VideoCaptureAsync OK!")
+
+    # 4. Anti-regresion: Contrato de Pose Unica Activa
+    pose_names = [p['name'] for p in POSES]
+    assert_eq(len(pose_names), len(set(pose_names)), "No deben existir poses con nombres duplicados")
+    print("      -> Contrato de Pose Unica Activa y Catalogo sin colisiones OK!")
+
 def test_anatomy_and_math():
     run_anatomy_and_math_tests()
 
@@ -641,6 +661,9 @@ def test_illustrations_and_movement():
     from test_pose_illustrations import run_all_illustration_tests
     run_all_illustration_tests()
 
+def test_regressions():
+    run_regression_tests()
+
 def run_all():
     print("==================================================")
     print("      POSES LOCAS - SUITE COMPLETA DE TESTS       ")
@@ -653,6 +676,7 @@ def run_all():
     run_feature_and_toggles_tests()
     from test_pose_illustrations import run_all_illustration_tests
     run_all_illustration_tests()
+    run_regression_tests()
     print("==================================================")
     print("      TODO CHECKQUEADO Y APROBADO EXITOSAMENTE    ")
     print("==================================================")

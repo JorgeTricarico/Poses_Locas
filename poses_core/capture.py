@@ -11,8 +11,11 @@ import numpy as np
 
 class MockVideoCapture:
     """Emulador de cámara cuando no hay hardware USB disponible o para tests headless."""
-    def __init__(self):
+    def __init__(self, width=1280, height=720):
+        self.width = width
+        self.height = height
         self.started = False
+        self.is_mock = True
         self.read_lock = threading.Lock()
         self.t0 = time.time()
 
@@ -31,33 +34,73 @@ class MockVideoCapture:
 
     def read(self):
         t = time.time() - self.t0
-        frame = np.full((720, 1280, 3), (25, 20, 35), dtype=np.uint8)
-        cv2.putText(frame, "POSES LOCAS AR - MODO DEMO", (330, 320), cv2.FONT_HERSHEY_DUPLEX, 1.2, (0, 255, 255), 2, cv2.LINE_AA)
-        cv2.putText(frame, "Camara web no detectada. Conecte su camara USB.", (320, 380), cv2.FONT_HERSHEY_DUPLEX, 0.7, (200, 200, 200), 1, cv2.LINE_AA)
-        r = int(25 + 10 * math.sin(t * 4))
-        cv2.circle(frame, (640, 480), r, (0, 255, 0), -1, cv2.LINE_AA)
+        # Canvas estilizado neutral sin texto crudo previo al flip horizontal
+        frame = np.full((self.height, self.width, 3), (25, 20, 35), dtype=np.uint8)
+        # Marco de calibración geométrico simétrico
+        cv2.rectangle(frame, (60, 60), (self.width - 60, self.height - 60), (45, 38, 60), 2)
+        r = int(32 + 12 * math.sin(t * 3.5))
+        cv2.circle(frame, (self.width // 2, self.height // 2), r, (0, 220, 255), 2, cv2.LINE_AA)
+        cv2.circle(frame, (self.width // 2, self.height // 2), max(5, r // 3), (255, 120, 0), -1, cv2.LINE_AA)
         return True, frame
 
 
 class VideoCaptureAsync:
-    """Captura de video en hilo secundario independiente para garantizar 30-60 FPS fluidos."""
-    def __init__(self, src=0):
+    """Captura de video en hilo secundario independiente con soporte robusto V4L2 y MJPG."""
+    def __init__(self, src=0, width=1280, height=720):
         self.src = src
-        self.cap = cv2.VideoCapture(self.src)
-        if isinstance(self.src, int):
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 720)
-        self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
-        self.grabbed = False
-        self.frame = None
-        for _ in range(15):
-            if self.cap.isOpened():
-                self.grabbed, self.frame = self.cap.read()
-                if self.grabbed and self.frame is not None:
-                    break
-            time.sleep(0.08)
+        self.width = width
+        self.height = height
+        self.is_mock = False
         self.started = False
         self.read_lock = threading.Lock()
+        self.grabbed = False
+        self.frame = None
+
+        # En Linux/V4L2, pasar cv2.CAP_V4L2 si src es entero
+        if isinstance(self.src, int):
+            try:
+                self.cap = cv2.VideoCapture(self.src, cv2.CAP_V4L2)
+            except Exception:
+                self.cap = cv2.VideoCapture(self.src)
+
+            # Configurar FourCC MJPG prioritariamente para cámaras USB en Linux/RPi
+            try:
+                fourcc_mjpg = cv2.VideoWriter_fourcc(*'MJPG')
+                self.cap.set(cv2.CAP_PROP_FOURCC, fourcc_mjpg)
+            except Exception:
+                pass
+
+            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        else:
+            self.cap = cv2.VideoCapture(self.src)
+            self.cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+
+        # Bucle de warm-up y resiliencia: sensores USB requieren estabilizar stream
+        if self.cap.isOpened():
+            for attempt in range(12):
+                grabbed, frame = self.cap.read()
+                if grabbed and frame is not None and frame.size > 0:
+                    self.grabbed = True
+                    self.frame = frame
+                    break
+                time.sleep(0.08)
+
+            # Fallback si 1280x720 falló: probar resolución nativa de fallback (640x480)
+            if not self.grabbed and isinstance(self.src, int):
+                try:
+                    self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, 640)
+                    self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
+                    for _ in range(6):
+                        grabbed, frame = self.cap.read()
+                        if grabbed and frame is not None and frame.size > 0:
+                            self.grabbed = True
+                            self.frame = frame
+                            break
+                        time.sleep(0.06)
+                except Exception:
+                    pass
 
     def is_opened(self):
         return self.cap.isOpened() and self.grabbed

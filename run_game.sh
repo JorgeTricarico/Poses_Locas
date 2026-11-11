@@ -46,4 +46,8 @@ echo "=== INICIANDO POSES LOCAS [$(date)] ===" > "$LOG_FILE"
 echo "Python: $PYTHON_BIN" >> "$LOG_FILE"
 echo "DISPLAY=$DISPLAY, WAYLAND_DISPLAY=$WAYLAND_DISPLAY" >> "$LOG_FILE"
 
+# Liberar cualquier proceso previo que pudiera mantener bloqueada la camara USB
+pkill -f "poses_locas.py" 2>/dev/null || true
+sleep 0.2
+
 exec "$PYTHON_BIN" poses_locas.py "$@" 2>&1 | tee -a "$LOG_FILE"
