@@ -672,7 +672,7 @@ def main():
                 oy = 230 + draw_i * 68
                 if is_sel:
                     blend_rect_roi(frame, display_w//2 - 320, oy - 42, 640, 56, (30, 40, 60), 0.85)
-                    cv2.rectangle(frame, display_w//2 - 320, oy - 42, (display_w//2 + 320, oy + 14), (0, 255, 120), 2)
+                    cv2.rectangle(frame, (display_w//2 - 320, oy - 42), (display_w//2 + 320, oy + 14), (0, 255, 120), 2)
                 cv2.putText(frame, prefix + opt['display'], (display_w//2 - 290, oy), cv2.FONT_HERSHEY_DUPLEX, 1.0, color, 2, cv2.LINE_AA)
 
             confirm_prog = 0.0
