@@ -22,6 +22,9 @@ if [ -z "$DISPLAY" ]; then
     export DISPLAY=":0"
 fi
 
+# Configurar Qt5 / OpenCV para usar el backend xcb (compatible con XWayland)
+export QT_QPA_PLATFORM=xcb
+
 # Soporte de audio para SDL / Pygame en Pipewire / PulseAudio
 export SDL_AUDIODRIVER=pulseaudio
 export SDL_VIDEO_X11_NET_WM_BYPASS_COMPOSITOR=0
