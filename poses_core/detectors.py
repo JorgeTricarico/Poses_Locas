@@ -278,20 +278,50 @@ def check_spin(state, lm):
 
 
 def check_flail_arms(state, lm):
+    """
+    Detecta el movimiento dinamico de brazos con doble modalidad:
+    1. Alternado armónico (un brazo arriba y el otro abajo en contrafase).
+    2. Bombeo simétrico (ambos brazos arriba y abajo sincronizados).
+    Acumula impactos en ambas ejecuciones motrices naturales con debounce.
+    """
     events = []
+    bu = get_body_unit(lm)
+    diff_y = lm[L_WRIST].y - lm[R_WRIST].y
     l_arm_up = lm[L_WRIST].y < lm[L_SHOULDER].y
     r_arm_up = lm[R_WRIST].y < lm[R_SHOULDER].y
-    current_pos = 'up' if (l_arm_up and r_arm_up) else ('down' if not l_arm_up and not r_arm_up else 'mid')
-    if state.last_arm_pos is None:
-        state.last_arm_pos = current_pos
-    if current_pos == 'up' and state.last_arm_pos != 'up':
-        state.last_arm_pos = 'up'
-        state.arm_hits += 1
-        events.append({'type': 'hit', 'side': 'up', 'x': 0.5, 'y': 0.2})
-    elif current_pos == 'down' and state.last_arm_pos != 'down':
-        state.last_arm_pos = 'down'
-        state.arm_hits += 1
-        events.append({'type': 'hit', 'side': 'down', 'x': 0.5, 'y': 0.8})
+    l_arm_down = lm[L_WRIST].y > lm[L_SHOULDER].y
+    r_arm_down = lm[R_WRIST].y > lm[R_SHOULDER].y
+
+    now = time.time()
+    min_interval = 0.10
+
+    # 1. Modo Alternado (Coach Vivo / Antifase): un brazo arriba y el otro abajo
+    if abs(diff_y) > 0.14 * bu:
+        curr_alt = 'left_high' if diff_y < 0 else 'right_high'
+        last_alt = getattr(state, 'last_alt_arm_pos', None)
+        if last_alt is None:
+            state.last_alt_arm_pos = curr_alt
+        elif curr_alt != last_alt:
+            if now - getattr(state, 'last_arm_hit_time', 0) >= min_interval:
+                state.last_alt_arm_pos = curr_alt
+                state.arm_hits += 1
+                state.last_arm_hit_time = now
+                pt = lm[L_WRIST] if curr_alt == 'left_high' else lm[R_WRIST]
+                events.append({'type': 'hit', 'side': curr_alt, 'x': pt.x, 'y': pt.y})
+
+    # 2. Modo Simétrico (Bombeo Simultáneo): ambos brazos arriba y ambos abajo
+    elif (l_arm_up and r_arm_up) or (l_arm_down and r_arm_down):
+        curr_sym = 'both_up' if (l_arm_up and r_arm_up) else 'both_down'
+        last_sym = getattr(state, 'last_sym_arm_pos', None)
+        if last_sym is None:
+            state.last_sym_arm_pos = curr_sym
+        elif curr_sym != last_sym:
+            if now - getattr(state, 'last_arm_hit_time', 0) >= min_interval:
+                state.last_sym_arm_pos = curr_sym
+                state.arm_hits += 1
+                state.last_arm_hit_time = now
+                events.append({'type': 'hit', 'side': curr_sym, 'x': 0.5, 'y': 0.2 if curr_sym == 'both_up' else 0.8})
+
     completed = state.arm_hits >= 6
     return completed, events
 

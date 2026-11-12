@@ -47,7 +47,8 @@ from poses_locas import (
     POSES, COREOGRAFIAS,
     FeatureFlags, FEATURES, DuoModeManager, CustomGhostRenderer,
     AudioReactiveEngine, PartyPlatformEngine,
-    MockVideoCapture, VideoCaptureAsync
+    MockVideoCapture, VideoCaptureAsync,
+    CalibrationStep, CalibrationData, CalibrationManager
 )
 from visual_ui_auditor import UILayoutAuditor
 
@@ -241,6 +242,38 @@ def run_dynamic_pose_tests():
         done, _ = check_air_guitar(state, lm)
         if done: break
     assert_true(done, "Guitarra dinamica completada")
+
+    # 6. Mueve los brazos (Alternado / Antifase)
+    state = PlayerState()
+    done = False
+    for i in range(14):
+        time.sleep(0.11)
+        lm = make_base_skeleton()
+        if i % 2 == 0:
+            lm[L_WRIST] = MockLM(0.20, 0.10) # Izq arriba
+            lm[R_WRIST] = MockLM(0.80, 0.50) # Der abajo
+        else:
+            lm[L_WRIST] = MockLM(0.20, 0.50) # Izq abajo
+            lm[R_WRIST] = MockLM(0.80, 0.10) # Der arriba
+        done, _ = check_flail_arms(state, lm)
+        if done: break
+    assert_true(done, "Mueve los brazos alternado (coach) completado")
+
+    # 7. Mueve los brazos (Simetrico / Bombeo conjunto)
+    state = PlayerState()
+    done = False
+    for i in range(14):
+        time.sleep(0.11)
+        lm = make_base_skeleton()
+        if i % 2 == 0:
+            lm[L_WRIST] = MockLM(0.20, 0.10) # Ambos arriba
+            lm[R_WRIST] = MockLM(0.80, 0.10)
+        else:
+            lm[L_WRIST] = MockLM(0.20, 0.50) # Ambos abajo
+            lm[R_WRIST] = MockLM(0.80, 0.50)
+        done, _ = check_flail_arms(state, lm)
+        if done: break
+    assert_true(done, "Mueve los brazos simetrico completado")
 
     print("      -> Todas las poses dinamicas pasaron la suite!")
 
@@ -646,6 +679,83 @@ def run_regression_tests():
     assert_eq(len(pose_names), len(set(pose_names)), "No deben existir poses con nombres duplicados")
     print("      -> Contrato de Pose Unica Activa y Catalogo sin colisiones OK!")
 
+    # 5. Anti-regresion: Sincronia biomecanica de brazos y correspondencia visual
+    p_arms = {'name': 'Mueve los Brazos!', 'dynamic': True}
+    pts_wave_up = get_animated_ref_points(p_arms, t=0.26)
+    assert_true(pts_wave_up['lw'][1] < pts_wave_up['rw'][1], "Brazo izq debe subir (y menor) cuando der baja")
+    assert_true(0.08 <= pts_wave_up['lw'][1] <= 0.75, "Brazo izq dentro de limites visuales")
+    assert_true(0.08 <= pts_wave_up['rw'][1] <= 0.75, "Brazo der dentro de limites visuales")
+    print("      -> Sincronia biomecanica de brazos y correspondencia visual OK!")
+
+def run_calibration_tests():
+    print("[6.5/7] Probando Sistema de Calibracion Pre-Juego (Centro -> T-Pose -> Brazos Arriba)...")
+    calib = CalibrationManager()
+    assert_true(not calib.is_active(), "Calibracion debe iniciar inactiva")
+
+    calib.start()
+    assert_true(calib.is_active(), "Calibracion debe activarse con start()")
+    assert_eq(calib.step, CalibrationStep.CENTER, "Paso inicial debe ser CENTER")
+
+    # 1. Simular Centrado: pose centrada por 1.1s
+    center_lm = make_base_skeleton()
+    done = False
+    for _ in range(6):
+        done = calib.update(0.20, center_lm, time.time())
+    assert_true(not done, "Paso 1 no debe terminar inmediatamente la sesion")
+    assert_eq(calib.step, CalibrationStep.T_POSE, "Debe haber avanzado a T_POSE")
+
+    # 2. Simular T-Pose por 1.3s
+    t_pose_lm = make_base_skeleton()
+    t_pose_lm[L_WRIST] = MockLM(0.12, 0.32)
+    t_pose_lm[R_WRIST] = MockLM(0.88, 0.32)
+    for _ in range(7):
+        done = calib.update(0.20, t_pose_lm, time.time())
+    assert_true(not done, "Paso 2 no debe terminar inmediatamente")
+    assert_eq(calib.step, CalibrationStep.ARMS_UP, "Debe haber avanzado a ARMS_UP")
+    assert_true(calib.data.arm_span > 0.60, f"Envergadura calibrada esperada > 0.60, dio {calib.data.arm_span}")
+
+    # 3. Simular Brazos Arriba por 1.1s
+    arms_up_lm = make_base_skeleton()
+    arms_up_lm[L_WRIST] = MockLM(0.35, 0.08)
+    arms_up_lm[R_WRIST] = MockLM(0.65, 0.08)
+    for _ in range(6):
+        done = calib.update(0.20, arms_up_lm, time.time())
+    assert_true(not done, "Paso 3 pasa a READY")
+    assert_eq(calib.step, CalibrationStep.READY, "Debe haber avanzado a READY")
+    assert_true(calib.data.is_calibrated, "Datos deben marcarse como calibrados")
+
+    # 4. Finalizar cuenta regresiva de READY por 0.9s
+    for _ in range(5):
+        done = calib.update(0.20, arms_up_lm, time.time())
+    assert_true(done, "Calibracion debe marcarse como completada tras READY")
+    assert_true(not calib.is_active(), "Calibracion debe quedar inactiva tras terminar")
+
+    # 5. Prueba de Salto (Skip)
+    calib_skip = CalibrationManager()
+    calib_skip.start()
+    calib_skip.skip()
+    assert_true(not calib_skip.is_active(), "skip() debe desactivar calibracion")
+    assert_true(calib_skip.data.is_calibrated, "skip() debe aplicar valores por defecto validos")
+
+    # 6. Auditoria de UI / Renderizado del HUD de Calibracion
+    frame_calib = np.full((720, 1280, 3), (35, 30, 42), dtype=np.uint8)
+    calib_render = CalibrationManager()
+    calib_render.start()
+    calib_render.step = CalibrationStep.T_POSE
+    calib_render.hold_time = 0.6
+    calib_render.draw(frame_calib, 1280, 720, 1.0)
+    assert_eq(frame_calib.shape, (720, 1280, 3), "Frame de calibracion debe tener dimensiones 1280x720")
+
+    auditor_calib = UILayoutAuditor("PreGame_Calibration", 1280, 720, check_center_safe_zone=False)
+    auditor_calib.register_box("Calib_Top_Banner", 1280 // 2 - 340, 20, 680, 102, group="banner")
+    auditor_calib.register_box("Calib_Coach_Card", 1280 - 230, 20, 210, 160, group="coach")
+    auditor_calib.register_box("Calib_Skip_Pill", 1280 // 2 - 220, 720 - 48, 440, 36, group="skip")
+    auditor_calib.register_text(frame_calib, "CALIBRACION PRE-JUEGO [PASO 2/3]: T-POSE", 1280 // 2 - 200, 50,
+                                cv2.FONT_HERSHEY_DUPLEX, 0.72, (0, 255, 255), 2, group="banner")
+    summary = auditor_calib.summary()
+    assert_true(summary["passed"], f"Auditoria visual de calibracion fallida: {summary['violations']}")
+    print("      -> Sistema y HUD de Calibracion Pre-Juego aprobado 100%!")
+
 def test_anatomy_and_math():
     run_anatomy_and_math_tests()
 
@@ -664,6 +774,9 @@ def test_visual_and_auditor():
 def test_feature_toggles_and_subsystems():
     run_feature_and_toggles_tests()
 
+def test_calibration():
+    run_calibration_tests()
+
 def test_illustrations_and_movement():
     from test_pose_illustrations import run_all_illustration_tests
     run_all_illustration_tests()
@@ -681,6 +794,7 @@ def run_all():
     run_cognitive_and_profile_tests()
     run_visual_and_auditor_tests()
     run_feature_and_toggles_tests()
+    run_calibration_tests()
     from test_pose_illustrations import run_all_illustration_tests
     run_all_illustration_tests()
     run_regression_tests()

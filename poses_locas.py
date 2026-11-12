@@ -53,7 +53,8 @@ from poses_core import (
     MockVideoCapture, VideoCaptureAsync,
     shift_queue, get_dynamic_progress, log_metric,
     FeatureFlags, FEATURES, DuoModeManager, CustomGhostRenderer,
-    AudioReactiveEngine, PartyPlatformEngine
+    AudioReactiveEngine, PartyPlatformEngine,
+    CalibrationStep, CalibrationData, CalibrationManager
 )
 
 # Configuración de entorno y audio
@@ -200,6 +201,8 @@ def main():
     custom_ghost = CustomGhostRenderer()
     audio_reactive = AudioReactiveEngine()
     party_platform = PartyPlatformEngine()
+    calib_mgr = CalibrationManager()
+    in_calibration = False
 
     while True:
         ret, frame = cap.read()
@@ -229,361 +232,377 @@ def main():
         # MODO JUEGO ACTIVO (show_menu == False)
         # =========================================================
         if not show_menu:
-            # Reproducción infinita en Modo Libre: reinicia loop si termina la pista
-            if HAS_AUDIO and current_mode == 'LIBRE' and current_song != 'Sin Musica':
-                if not pygame.mixer.music.get_busy():
-                    try:
-                        pygame.mixer.music.load(current_song)
-                        pygame.mixer.music.play(-1)
-                    except Exception:
-                        pass
-            if has_person:
-                lm = results.pose_landmarks.landmark
-
-                # Gesto Saltar Pose (Wakanda X en pecho)
-                if check_gesture_next(lm):
-                    if control_gesture_start is None:
-                        control_gesture_start = current_time
-                    skip_prog = min(1.0, (current_time - control_gesture_start) / control_gesture_required)
-                    blend_rect_roi(frame, (display_w - 320) // 2, 80, 320, 40, (20, 20, 30), 0.85)
-                    draw_progress_bar(frame, (display_w - 300) // 2, 88, 300, 22, skip_prog, (0, 100, 255))
-                    cv2.putText(frame, "SALTANDO POSE...", ((display_w - 280) // 2, 82), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 150, 255), 2, cv2.LINE_AA)
-
-                    if current_time - control_gesture_start >= control_gesture_required:
-                        floating_texts.add("POSE SALTEADA!", 40, 310, (0, 100, 255), 1.3)
-                        play_sound(snd_fail)
-                        fever_gauge = max(0, fever_gauge - 20)
-                        shake_time = current_time
-                        log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'SKIPPED')
-                        current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
-                        pose_start_time = current_time
-                        control_gesture_start, hold_progress, streak = None, 0.0, 0
-                        queue_slide_offset = 240.0
-                        state.reset()
+            if in_calibration:
+                lm = results.pose_landmarks.landmark if has_person else None
+                done = calib_mgr.update(dt, lm, current_time)
+                calib_mgr.draw(frame, display_w, display_h, current_time)
+                if done:
+                    in_calibration = False
+                    pose_start_time = current_time
+                    state.reset()
+                    if HAS_AUDIO and current_song and current_song != "Sin Musica":
+                        try:
+                            pygame.mixer.music.load(current_song)
+                            pygame.mixer.music.play(-1)
+                            pygame.mixer.music.set_volume(0.4)
+                        except Exception:
+                            pass
+            else:
+                # Reproducción infinita en Modo Libre: reinicia loop si termina la pista
+                if HAS_AUDIO and current_mode == 'LIBRE' and current_song != 'Sin Musica':
+                    if not pygame.mixer.music.get_busy():
+                        try:
+                            pygame.mixer.music.load(current_song)
+                            pygame.mixer.music.play(-1)
+                        except Exception:
+                            pass
+                if has_person:
+                    lm = results.pose_landmarks.landmark
+    
+                    # Gesto Saltar Pose (Wakanda X en pecho)
+                    if check_gesture_next(lm):
+                        if control_gesture_start is None:
+                            control_gesture_start = current_time
+                        skip_prog = min(1.0, (current_time - control_gesture_start) / control_gesture_required)
+                        blend_rect_roi(frame, (display_w - 320) // 2, 80, 320, 40, (20, 20, 30), 0.85)
+                        draw_progress_bar(frame, (display_w - 300) // 2, 88, 300, 22, skip_prog, (0, 100, 255))
+                        cv2.putText(frame, "SALTANDO POSE...", ((display_w - 280) // 2, 82), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 150, 255), 2, cv2.LINE_AA)
+    
+                        if current_time - control_gesture_start >= control_gesture_required:
+                            floating_texts.add("POSE SALTEADA!", 40, 310, (0, 100, 255), 1.3)
+                            play_sound(snd_fail)
+                            fever_gauge = max(0, fever_gauge - 20)
+                            shake_time = current_time
+                            log_metric(current_mode, current_pose['name'], current_time - pose_start_time, 'SKIPPED')
+                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
+                            pose_start_time = current_time
+                            control_gesture_start, hold_progress, streak = None, 0.0, 0
+                            queue_slide_offset = 240.0
+                            state.reset()
+                    else:
+                        control_gesture_start = None
+    
+                        # --- POSE: CONGELADOS! ---
+                        if current_pose.get('is_freeze'):
+                            left_score, right_score = 1.0, 1.0
+                            left_ok, right_ok = True, True
+                            if hold_progress == 0.0 and state.freeze_reference is None:
+                                state.freeze_reference = [{"x": lm[kp].x, "y": lm[kp].y} for kp in [NOSE, L_WRIST, R_WRIST, L_HIP, R_HIP]]
+    
+                            movement = 0.0
+                            if state.freeze_reference:
+                                for i, kp in enumerate([NOSE, L_WRIST, R_WRIST, L_HIP, R_HIP]):
+                                    dx = lm[kp].x - state.freeze_reference[i]["x"]
+                                    dy = lm[kp].y - state.freeze_reference[i]["y"]
+                                    movement += math.hypot(dx, dy)
+    
+                            time_left = max(0.0, 3.0 - (current_time - pose_start_time))
+                            blend_rect_roi(frame, 400, 18, 480, 85, (15, 15, 30), 0.85)
+                            cv2.rectangle(frame, (400, 18), (880, 103), (0, 215, 255), 2)
+                            cv2.putText(frame, f"CONGELADOS! {time_left:.1f}s", (435, 58), cv2.FONT_HERSHEY_DUPLEX, 1.2, (0, 255, 255), 2, cv2.LINE_AA)
+                            draw_progress_bar(frame, 425, 70, 430, 20, time_left / 3.0, (0, 215, 255))
+    
+                            if movement > 0.22:
+                                floating_texts.add("TE MOVISTE!", 40, 310, (60, 60, 255), 1.8)
+                                play_sound(snd_fail)
+                                fever_gauge = max(0, fever_gauge - 40)
+                                shake_time = current_time
+                                streak = 0
+                                log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'FAILED')
+                                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
+                                pose_start_time = current_time
+                                hold_progress = 0.0
+                                queue_slide_offset = 240.0
+                                state.reset()
+                            elif time_left <= 0:
+                                multiplier = 3 if fever_active else (1 + int(streak // 3))
+                                points = int(1000 * multiplier)
+                                score += points
+                                poses_completed += 1
+                                streak += 1
+                                if not fever_active:
+                                    fever_gauge = min(100, fever_gauge + 20)
+                                    if fever_gauge >= 100:
+                                        fever_active = True
+                                        fever_start_time = current_time
+                                        floating_texts.add("FEVER TIME!", display_w//2 - 160, 220, (0, 255, 255), 2.4)
+                                particles.emit(display_w // 2, 340, (255, 255, 255), 45)
+                                floating_texts.add(f"SOBREVIVISTE! +{points}", 40, 310, (0, 255, 120), 1.8)
+                                play_sound(snd_success)
+                                log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'COMPLETED')
+                                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
+                                pose_start_time = current_time
+                                hold_progress = 0.0
+                                queue_slide_offset = 240.0
+                                state.reset()
+    
+                        # --- POSES DINÁMICAS ---
+                        elif current_pose.get('dynamic'):
+                            completed, events = current_pose['checks'](state, lm)
+                            left_score, right_score = 1.0, 1.0
+                            left_ok, right_ok = True, True
+    
+                            for e in events:
+                                if e['type'] == 'hit':
+                                    play_sound(snd_punch)
+                                    px = int(e['x'] * display_w)
+                                    py = int(e['y'] * display_h)
+                                    particles.emit(px, py, current_pose['color'], 24)
+                                    floating_texts.add("HIT! +20", px - 40, py - 30, (0, 255, 255), 1.2)
+                                    score += 20
+    
+                            if completed:
+                                time_taken = current_time - pose_start_time
+                                streak += 1
+                                poses_completed += 1
+                                multiplier = 3 if fever_active else (1 + int(streak // 3))
+    
+                                is_gold = current_pose.get('variant') == 'GOLD'
+                                is_speed = current_pose.get('variant') == 'SPEED'
+                                if time_taken <= 2.2 or is_speed:
+                                    tier_text = "PERFECTO!!"
+                                    tier_col = (0, 215, 255)
+                                    base_pts = 150 * (2 if is_speed else 1)
+                                    fever_add = 25
+                                elif time_taken <= 3.8:
+                                    tier_text = "GENIAL!"
+                                    tier_col = (0, 255, 120)
+                                    base_pts = 100
+                                    fever_add = 15
+                                else:
+                                    tier_text = "BIEN!"
+                                    tier_col = (255, 230, 0)
+                                    base_pts = 70
+                                    fever_add = 10
+    
+                                if is_gold:
+                                    base_pts += 500
+                                    fever_add += 30
+    
+                                points = int(base_pts * multiplier)
+                                score += points
+                                if not fever_active:
+                                    fever_gauge = min(100, fever_gauge + fever_add)
+                                    if fever_gauge >= 100:
+                                        fever_active = True
+                                        fever_start_time = current_time
+                                        floating_texts.add("FEVER TIME!", display_w//2 - 160, 220, (0, 255, 255), 2.4)
+    
+                                play_sound(snd_success)
+                                particles.emit_confetti(display_w, gold_only=is_gold)
+                                particles.emit(display_w // 2, 340, current_pose['color'], 35)
+                                floating_texts.add(f"{tier_text} +{points}", 40, 310, tier_col, 1.8)
+                                show_success_flash = True
+                                success_flash_time = current_time
+                                log_metric(current_mode, current_pose['name'], time_taken, 'COMPLETED')
+                                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
+                                pose_start_time = current_time
+                                queue_slide_offset = 240.0
+                                state.reset()
+    
+                        # --- POSES ESTÁTICAS CON ACUMULADOR GRACE DECAY ---
+                        else:
+                            left_check = current_pose['checks']['left_arm']
+                            right_check = current_pose['checks']['right_arm']
+                            left_ok = left_check(lm)
+                            right_ok = right_check(lm)
+                            left_score = score_arm(left_check, lm)
+                            right_score = score_arm(right_check, lm)
+    
+                            # Bonus Pasivo de Groove
+                            hip_x = (lm[L_HIP].x + lm[R_HIP].x) / 2.0
+                            if state.global_center_x is None:
+                                state.global_center_x = hip_x
+                            else:
+                                state.global_center_x = state.global_center_x * 0.98 + hip_x * 0.02
+                            if abs(hip_x - state.global_center_x) > 0.025 and current_time - state.last_groove_time > 0.45:
+                                state.last_groove_time = current_time
+                                score += 15
+                                floating_texts.add("GROOVE CADERA +15", 40, 355, (255, 120, 255), 0.72)
+                                particles.emit(int(hip_x * display_w), int(lm[L_HIP].y * display_h), (255, 100, 255), 10)
+    
+                            is_speed = current_pose.get('variant') == 'SPEED'
+                            req_time = (0.35 if is_speed else 0.55) * PROFILES[current_profile]['grace_mult']
+                            if left_ok and right_ok:
+                                hold_progress = min(1.0, hold_progress + (dt / req_time))
+                            else:
+                                decay = 0.6 if (left_ok or right_ok) else 1.2
+                                hold_progress = max(0.0, hold_progress - decay * dt)
+    
+                            if hold_progress >= 1.0:
+                                time_taken = current_time - pose_start_time
+                                streak += 1
+                                poses_completed += 1
+                                multiplier = 3 if fever_active else (1 + int(streak // 3))
+    
+                                is_gold = current_pose.get('variant') == 'GOLD'
+                                if time_taken <= 1.9 or is_speed:
+                                    tier_text = "PERFECTO!!"
+                                    tier_col = (0, 215, 255)
+                                    base_pts = 150 * (2 if is_speed else 1)
+                                    fever_add = 25
+                                elif time_taken <= 3.6:
+                                    tier_text = "GENIAL!"
+                                    tier_col = (0, 255, 120)
+                                    base_pts = 100
+                                    fever_add = 15
+                                else:
+                                    tier_text = "BIEN!"
+                                    tier_col = (255, 230, 0)
+                                    base_pts = 70
+                                    fever_add = 10
+    
+                                if is_gold:
+                                    base_pts += 500
+                                    fever_add += 30
+    
+                                points = int(base_pts * multiplier)
+                                score += points
+                                if not fever_active:
+                                    fever_gauge = min(100, fever_gauge + fever_add)
+                                    if fever_gauge >= 100:
+                                        fever_active = True
+                                        fever_start_time = current_time
+                                        floating_texts.add("FEVER TIME!", display_w//2 - 160, 220, (0, 255, 255), 2.4)
+    
+                                play_sound(snd_success)
+                                particles.emit_confetti(display_w, gold_only=is_gold)
+                                particles.emit(display_w // 2, 340, current_pose['color'], 30)
+                                floating_texts.add(f"{tier_text} +{points}", 40, 310, tier_col, 1.8)
+                                if streak >= 3 and not fever_active:
+                                    floating_texts.add(f"RACHA x{streak}!", 40, 360, (0, 255, 255), 1.2)
+    
+                                show_success_flash = True
+                                success_flash_time = current_time
+                                log_metric(current_mode, current_pose['name'], time_taken, 'COMPLETED')
+                                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
+                                pose_start_time = current_time
+                                hold_progress = 0.0
+                                queue_slide_offset = 240.0
+                                state.reset()
+    
+                    # Dibujo AR Central (Ghost Silhouette + Anillos + Esqueleto Semáforo + Estelas)
+                    if FEATURES.enable_custom_ghost:
+                        custom_ghost.render_custom_ghost(frame, lm, current_pose, display_w, display_h, left_score, right_score, current_time)
+                    else:
+                        draw_ghost_and_target_rings(frame, lm, current_pose, display_w, display_h, left_score, right_score)
+    
+                    draw_skeleton_with_feedback(frame, lm, display_w, display_h, left_ok, right_ok, left_score, right_score)
+                    hand_trails.update_and_draw(frame, lm, display_w, display_h, score_to_traffic_color(left_score), score_to_traffic_color(right_score))
+    
+                    # Feature: Modo Dúo (desactivado por defecto)
+                    if FEATURES.enable_duo_mode:
+                        duo_mgr.evaluate_players(current_pose, lm, None, dt, current_time)
+                        duo_mgr.draw_duo_hud(frame, display_w, display_h)
+    
                 else:
                     control_gesture_start = None
-
-                    # --- POSE: CONGELADOS! ---
-                    if current_pose.get('is_freeze'):
-                        left_score, right_score = 1.0, 1.0
-                        left_ok, right_ok = True, True
-                        if hold_progress == 0.0 and state.freeze_reference is None:
-                            state.freeze_reference = [{"x": lm[kp].x, "y": lm[kp].y} for kp in [NOSE, L_WRIST, R_WRIST, L_HIP, R_HIP]]
-
-                        movement = 0.0
-                        if state.freeze_reference:
-                            for i, kp in enumerate([NOSE, L_WRIST, R_WRIST, L_HIP, R_HIP]):
-                                dx = lm[kp].x - state.freeze_reference[i]["x"]
-                                dy = lm[kp].y - state.freeze_reference[i]["y"]
-                                movement += math.hypot(dx, dy)
-
-                        time_left = max(0.0, 3.0 - (current_time - pose_start_time))
-                        blend_rect_roi(frame, 400, 18, 480, 85, (15, 15, 30), 0.85)
-                        cv2.rectangle(frame, (400, 18), (880, 103), (0, 215, 255), 2)
-                        cv2.putText(frame, f"CONGELADOS! {time_left:.1f}s", (435, 58), cv2.FONT_HERSHEY_DUPLEX, 1.2, (0, 255, 255), 2, cv2.LINE_AA)
-                        draw_progress_bar(frame, 425, 70, 430, 20, time_left / 3.0, (0, 215, 255))
-
-                        if movement > 0.22:
-                            floating_texts.add("TE MOVISTE!", 40, 310, (60, 60, 255), 1.8)
-                            play_sound(snd_fail)
-                            fever_gauge = max(0, fever_gauge - 40)
-                            shake_time = current_time
-                            streak = 0
-                            log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'FAILED')
-                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
-                            pose_start_time = current_time
-                            hold_progress = 0.0
-                            queue_slide_offset = 240.0
-                            state.reset()
-                        elif time_left <= 0:
-                            multiplier = 3 if fever_active else (1 + int(streak // 3))
-                            points = int(1000 * multiplier)
-                            score += points
-                            poses_completed += 1
-                            streak += 1
-                            if not fever_active:
-                                fever_gauge = min(100, fever_gauge + 20)
-                                if fever_gauge >= 100:
-                                    fever_active = True
-                                    fever_start_time = current_time
-                                    floating_texts.add("FEVER TIME!", display_w//2 - 160, 220, (0, 255, 255), 2.4)
-                            particles.emit(display_w // 2, 340, (255, 255, 255), 45)
-                            floating_texts.add(f"SOBREVIVISTE! +{points}", 40, 310, (0, 255, 120), 1.8)
-                            play_sound(snd_success)
-                            log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'COMPLETED')
-                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
-                            pose_start_time = current_time
-                            hold_progress = 0.0
-                            queue_slide_offset = 240.0
-                            state.reset()
-
-                    # --- POSES DINÁMICAS ---
-                    elif current_pose.get('dynamic'):
-                        completed, events = current_pose['checks'](state, lm)
-                        left_score, right_score = 1.0, 1.0
-                        left_ok, right_ok = True, True
-
-                        for e in events:
-                            if e['type'] == 'hit':
-                                play_sound(snd_punch)
-                                px = int(e['x'] * display_w)
-                                py = int(e['y'] * display_h)
-                                particles.emit(px, py, current_pose['color'], 24)
-                                floating_texts.add("HIT! +20", px - 40, py - 30, (0, 255, 255), 1.2)
-                                score += 20
-
-                        if completed:
-                            time_taken = current_time - pose_start_time
-                            streak += 1
-                            poses_completed += 1
-                            multiplier = 3 if fever_active else (1 + int(streak // 3))
-
-                            is_gold = current_pose.get('variant') == 'GOLD'
-                            is_speed = current_pose.get('variant') == 'SPEED'
-                            if time_taken <= 2.2 or is_speed:
-                                tier_text = "PERFECTO!!"
-                                tier_col = (0, 215, 255)
-                                base_pts = 150 * (2 if is_speed else 1)
-                                fever_add = 25
-                            elif time_taken <= 3.8:
-                                tier_text = "GENIAL!"
-                                tier_col = (0, 255, 120)
-                                base_pts = 100
-                                fever_add = 15
-                            else:
-                                tier_text = "BIEN!"
-                                tier_col = (255, 230, 0)
-                                base_pts = 70
-                                fever_add = 10
-
-                            if is_gold:
-                                base_pts += 500
-                                fever_add += 30
-
-                            points = int(base_pts * multiplier)
-                            score += points
-                            if not fever_active:
-                                fever_gauge = min(100, fever_gauge + fever_add)
-                                if fever_gauge >= 100:
-                                    fever_active = True
-                                    fever_start_time = current_time
-                                    floating_texts.add("FEVER TIME!", display_w//2 - 160, 220, (0, 255, 255), 2.4)
-
-                            play_sound(snd_success)
-                            particles.emit_confetti(display_w, gold_only=is_gold)
-                            particles.emit(display_w // 2, 340, current_pose['color'], 35)
-                            floating_texts.add(f"{tier_text} +{points}", 40, 310, tier_col, 1.8)
-                            show_success_flash = True
-                            success_flash_time = current_time
-                            log_metric(current_mode, current_pose['name'], time_taken, 'COMPLETED')
-                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
-                            pose_start_time = current_time
-                            queue_slide_offset = 240.0
-                            state.reset()
-
-                    # --- POSES ESTÁTICAS CON ACUMULADOR GRACE DECAY ---
-                    else:
-                        left_check = current_pose['checks']['left_arm']
-                        right_check = current_pose['checks']['right_arm']
-                        left_ok = left_check(lm)
-                        right_ok = right_check(lm)
-                        left_score = score_arm(left_check, lm)
-                        right_score = score_arm(right_check, lm)
-
-                        # Bonus Pasivo de Groove
-                        hip_x = (lm[L_HIP].x + lm[R_HIP].x) / 2.0
-                        if state.global_center_x is None:
-                            state.global_center_x = hip_x
-                        else:
-                            state.global_center_x = state.global_center_x * 0.98 + hip_x * 0.02
-                        if abs(hip_x - state.global_center_x) > 0.025 and current_time - state.last_groove_time > 0.45:
-                            state.last_groove_time = current_time
-                            score += 15
-                            floating_texts.add("GROOVE CADERA +15", 40, 355, (255, 120, 255), 0.72)
-                            particles.emit(int(hip_x * display_w), int(lm[L_HIP].y * display_h), (255, 100, 255), 10)
-
-                        is_speed = current_pose.get('variant') == 'SPEED'
-                        req_time = (0.35 if is_speed else 0.55) * PROFILES[current_profile]['grace_mult']
-                        if left_ok and right_ok:
-                            hold_progress = min(1.0, hold_progress + (dt / req_time))
-                        else:
-                            decay = 0.6 if (left_ok or right_ok) else 1.2
-                            hold_progress = max(0.0, hold_progress - decay * dt)
-
-                        if hold_progress >= 1.0:
-                            time_taken = current_time - pose_start_time
-                            streak += 1
-                            poses_completed += 1
-                            multiplier = 3 if fever_active else (1 + int(streak // 3))
-
-                            is_gold = current_pose.get('variant') == 'GOLD'
-                            if time_taken <= 1.9 or is_speed:
-                                tier_text = "PERFECTO!!"
-                                tier_col = (0, 215, 255)
-                                base_pts = 150 * (2 if is_speed else 1)
-                                fever_add = 25
-                            elif time_taken <= 3.6:
-                                tier_text = "GENIAL!"
-                                tier_col = (0, 255, 120)
-                                base_pts = 100
-                                fever_add = 15
-                            else:
-                                tier_text = "BIEN!"
-                                tier_col = (255, 230, 0)
-                                base_pts = 70
-                                fever_add = 10
-
-                            if is_gold:
-                                base_pts += 500
-                                fever_add += 30
-
-                            points = int(base_pts * multiplier)
-                            score += points
-                            if not fever_active:
-                                fever_gauge = min(100, fever_gauge + fever_add)
-                                if fever_gauge >= 100:
-                                    fever_active = True
-                                    fever_start_time = current_time
-                                    floating_texts.add("FEVER TIME!", display_w//2 - 160, 220, (0, 255, 255), 2.4)
-
-                            play_sound(snd_success)
-                            particles.emit_confetti(display_w, gold_only=is_gold)
-                            particles.emit(display_w // 2, 340, current_pose['color'], 30)
-                            floating_texts.add(f"{tier_text} +{points}", 40, 310, tier_col, 1.8)
-                            if streak >= 3 and not fever_active:
-                                floating_texts.add(f"RACHA x{streak}!", 40, 360, (0, 255, 255), 1.2)
-
-                            show_success_flash = True
-                            success_flash_time = current_time
-                            log_metric(current_mode, current_pose['name'], time_taken, 'COMPLETED')
-                            current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
-                            pose_start_time = current_time
-                            hold_progress = 0.0
-                            queue_slide_offset = 240.0
-                            state.reset()
-
-                # Dibujo AR Central (Ghost Silhouette + Anillos + Esqueleto Semáforo + Estelas)
-                if FEATURES.enable_custom_ghost:
-                    custom_ghost.render_custom_ghost(frame, lm, current_pose, display_w, display_h, left_score, right_score, current_time)
+                    hold_progress = max(0.0, hold_progress - 1.0 * dt)
+    
+                # =========================================================
+                # RENDERIZADO DEL HUD (MAPA DE 5 ZONAS LIBRE DE COLISIONES)
+                # =========================================================
+    
+                # --- ZONA 1: TOP-LEFT HUD ---
+                blend_rect_roi(frame, 20, 18, 290, 132, (18, 15, 25), 0.78)
+                cv2.rectangle(frame, (20, 18), (310, 150), (0, 220, 255), 2)
+                cv2.putText(frame, f"PUNTAJE: {score:,}", (35, 58), cv2.FONT_HERSHEY_DUPLEX, 0.95, (0, 255, 255), 2, cv2.LINE_AA)
+                cv2.putText(frame, f"RACHA x{streak}  |  MULTI x{multiplier}", (35, 95), cv2.FONT_HERSHEY_DUPLEX, 0.65, (0, 200, 255), 2, cv2.LINE_AA)
+                cv2.rectangle(frame, (35, 112), (225, 132), (55, 55, 70), -1)
+                fever_w = int(190 * (fever_gauge / 100.0))
+                if fever_w > 0:
+                    cv2.rectangle(frame, (35, 112), (35 + fever_w, 132), (255, 50, 255), -1)
+                cv2.rectangle(frame, (35, 112), (225, 132), (255, 255, 255), 2)
+                cv2.putText(frame, f"FEVER {fever_gauge}%", (234, 128), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 130, 255), 1, cv2.LINE_AA)
+    
+                # --- ZONA 2: BANNER INFERIOR CENTRADO CON OPACIDAD ADAPTATIVA ---
+                # Reposicionado abajo para evitar oclusión cuando el jugador levanta los brazos al cielo.
+                # Cuenta con auto-ghosting (desvanecimiento automático) si las manos entran en la zona.
+                bx, by, bw, bh = 390, 634, 500, 70
+                banner_col = (0, 215, 255) if current_pose.get('variant') == 'GOLD' else (
+                    (255, 230, 0) if current_pose.get('variant') == 'SPEED' else current_pose.get('color', (0, 255, 120))
+                )
+                # Opacidad adaptativa contra extremidades
+                hand_near_banner = False
+                if has_person:
+                    for kp in (L_WRIST, R_WRIST):
+                        if 0.28 <= lm[kp].x <= 0.72 and lm[kp].y >= 0.80:
+                            hand_near_banner = True
+                            break
+                banner_alpha = 0.25 if hand_near_banner else 0.76
+    
+                blend_rect_roi(frame, bx, by, bw, bh, (15, 15, 25), banner_alpha)
+                cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), banner_col, 2)
+    
+                pname = current_pose.get('name', '')
+                (tw, _), _ = cv2.getTextSize(pname, cv2.FONT_HERSHEY_DUPLEX, 0.88, 2)
+                cv2.putText(frame, pname, (bx + (bw - tw) // 2, by + 30), cv2.FONT_HERSHEY_DUPLEX, 0.88, banner_col, 2, cv2.LINE_AA)
+    
+                if current_pose.get('dynamic'):
+                    cur_act, cur_target, lbl = get_dynamic_progress(pname, state)
+                    prog_val = min(1.0, cur_act / max(1, cur_target))
+                    cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (45, 45, 60), -1)
+                    cv2.rectangle(frame, (bx + 24, by + 40), (bx + 24 + int((bw - 48) * prog_val), by + 58), banner_col, -1)
+                    cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (255, 255, 255), 1)
+                    cv2.putText(frame, lbl, (bx + 35, by + 54), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+                elif not current_pose.get('is_freeze'):
+                    cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (45, 45, 60), -1)
+                    cv2.rectangle(frame, (bx + 24, by + 40), (bx + 24 + int((bw - 48) * hold_progress), by + 58), (0, 210, 110), -1)
+                    cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (255, 255, 255), 1)
+                    cv2.putText(frame, f"MANTENE: {int(hold_progress * 100)}%", (bx + 35, by + 54), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (210, 255, 220), 1, cv2.LINE_AA)
+    
+                # --- ZONA 3: TOP-RIGHT DUAL REFERENCE CARD (LIMPIA Y SIN TEXTOS REDUNDANTES) ---
+                rx, ry, rw, rh = 900, 18, 356, 190
+                blend_rect_roi(frame, rx, ry, rw, rh, (20, 18, 30), 0.85)
+                cv2.rectangle(frame, (rx, ry), (rx + rw, ry + rh), (255, 200, 0), 2)
+    
+                icon_name = current_pose.get('icon_name')
+                illus = load_pose_illustration_clean(icon_name, size=(155, 155)) if icon_name else None
+                use_illus = (illus is not None) and (not FEATURES.enable_stickman_only)
+    
+                if use_illus:
+                    frame[ry + 16:ry + 16 + 155, rx + 12:rx + 12 + 155] = illus
+                    cv2.rectangle(frame, (rx + 12, ry + 16), (rx + 167, ry + 171), (90, 90, 115), 1)
+                    stick_x, stick_w = rx + 176, 168
                 else:
-                    draw_ghost_and_target_rings(frame, lm, current_pose, display_w, display_h, left_score, right_score)
-
-                draw_skeleton_with_feedback(frame, lm, display_w, display_h, left_ok, right_ok, left_score, right_score)
-                hand_trails.update_and_draw(frame, lm, display_w, display_h, score_to_traffic_color(left_score), score_to_traffic_color(right_score))
-
-                # Feature: Modo Dúo (desactivado por defecto)
-                if FEATURES.enable_duo_mode:
-                    duo_mgr.evaluate_players(current_pose, lm, None, dt, current_time)
-                    duo_mgr.draw_duo_hud(frame, display_w, display_h)
-
-            else:
-                control_gesture_start = None
-                hold_progress = max(0.0, hold_progress - 1.0 * dt)
-
-            # =========================================================
-            # RENDERIZADO DEL HUD (MAPA DE 5 ZONAS LIBRE DE COLISIONES)
-            # =========================================================
-
-            # --- ZONA 1: TOP-LEFT HUD ---
-            blend_rect_roi(frame, 20, 18, 290, 132, (18, 15, 25), 0.78)
-            cv2.rectangle(frame, (20, 18), (310, 150), (0, 220, 255), 2)
-            cv2.putText(frame, f"PUNTAJE: {score:,}", (35, 58), cv2.FONT_HERSHEY_DUPLEX, 0.95, (0, 255, 255), 2, cv2.LINE_AA)
-            cv2.putText(frame, f"RACHA x{streak}  |  MULTI x{multiplier}", (35, 95), cv2.FONT_HERSHEY_DUPLEX, 0.65, (0, 200, 255), 2, cv2.LINE_AA)
-            cv2.rectangle(frame, (35, 112), (225, 132), (55, 55, 70), -1)
-            fever_w = int(190 * (fever_gauge / 100.0))
-            if fever_w > 0:
-                cv2.rectangle(frame, (35, 112), (35 + fever_w, 132), (255, 50, 255), -1)
-            cv2.rectangle(frame, (35, 112), (225, 132), (255, 255, 255), 2)
-            cv2.putText(frame, f"FEVER {fever_gauge}%", (234, 128), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (255, 130, 255), 1, cv2.LINE_AA)
-
-            # --- ZONA 2: BANNER INFERIOR CENTRADO CON OPACIDAD ADAPTATIVA ---
-            # Reposicionado abajo para evitar oclusión cuando el jugador levanta los brazos al cielo.
-            # Cuenta con auto-ghosting (desvanecimiento automático) si las manos entran en la zona.
-            bx, by, bw, bh = 390, 634, 500, 70
-            banner_col = (0, 215, 255) if current_pose.get('variant') == 'GOLD' else (
-                (255, 230, 0) if current_pose.get('variant') == 'SPEED' else current_pose.get('color', (0, 255, 120))
-            )
-            # Opacidad adaptativa contra extremidades
-            hand_near_banner = False
-            if has_person:
-                for kp in (L_WRIST, R_WRIST):
-                    if 0.28 <= lm[kp].x <= 0.72 and lm[kp].y >= 0.80:
-                        hand_near_banner = True
-                        break
-            banner_alpha = 0.25 if hand_near_banner else 0.76
-
-            blend_rect_roi(frame, bx, by, bw, bh, (15, 15, 25), banner_alpha)
-            cv2.rectangle(frame, (bx, by), (bx + bw, by + bh), banner_col, 2)
-
-            pname = current_pose.get('name', '')
-            (tw, _), _ = cv2.getTextSize(pname, cv2.FONT_HERSHEY_DUPLEX, 0.88, 2)
-            cv2.putText(frame, pname, (bx + (bw - tw) // 2, by + 30), cv2.FONT_HERSHEY_DUPLEX, 0.88, banner_col, 2, cv2.LINE_AA)
-
-            if current_pose.get('dynamic'):
-                cur_act, cur_target, lbl = get_dynamic_progress(pname, state)
-                prog_val = min(1.0, cur_act / max(1, cur_target))
-                cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (45, 45, 60), -1)
-                cv2.rectangle(frame, (bx + 24, by + 40), (bx + 24 + int((bw - 48) * prog_val), by + 58), banner_col, -1)
-                cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (255, 255, 255), 1)
-                cv2.putText(frame, lbl, (bx + 35, by + 54), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
-            elif not current_pose.get('is_freeze'):
-                cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (45, 45, 60), -1)
-                cv2.rectangle(frame, (bx + 24, by + 40), (bx + 24 + int((bw - 48) * hold_progress), by + 58), (0, 210, 110), -1)
-                cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (255, 255, 255), 1)
-                cv2.putText(frame, f"MANTENE: {int(hold_progress * 100)}%", (bx + 35, by + 54), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (210, 255, 220), 1, cv2.LINE_AA)
-
-            # --- ZONA 3: TOP-RIGHT DUAL REFERENCE CARD (LIMPIA Y SIN TEXTOS REDUNDANTES) ---
-            rx, ry, rw, rh = 900, 18, 356, 190
-            blend_rect_roi(frame, rx, ry, rw, rh, (20, 18, 30), 0.85)
-            cv2.rectangle(frame, (rx, ry), (rx + rw, ry + rh), (255, 200, 0), 2)
-
-            icon_name = current_pose.get('icon_name')
-            illus = load_pose_illustration_clean(icon_name, size=(155, 155)) if icon_name else None
-            use_illus = (illus is not None) and (not FEATURES.enable_stickman_only)
-
-            if use_illus:
-                frame[ry + 16:ry + 16 + 155, rx + 12:rx + 12 + 155] = illus
-                cv2.rectangle(frame, (rx + 12, ry + 16), (rx + 167, ry + 171), (90, 90, 115), 1)
-                stick_x, stick_w = rx + 176, 168
-            else:
-                # Proporción anatómica centrada cuando no hay imagen o en modo solo silueta
-                stick_x, stick_w = rx + (rw - 190) // 2, 190
-
-            ref_pts = get_animated_ref_points(current_pose, current_time)
-            draw_full_body_stickman(frame, stick_x, ry + 10, stick_w, 165, ref_pts, banner_col)
-            draw_intent_arrows_in_box(frame, current_pose, stick_x, ry + 10, stick_w, 165, current_time)
-
-            # --- RECORDATORIO DISCRETO EN ZONA 1 (FUERA DE SAFE ZONE) ---
-            cv2.putText(frame, "Gesto X en pecho = Saltar", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (170, 185, 210), 1, cv2.LINE_AA)
-
-            particles.update_and_draw(frame)
-            floating_texts.update_and_draw(frame)
-
-            # Feature: Gran Salto Party / Plataforma de Movimiento (desactivada por defecto)
-            if FEATURES.enable_party_platform:
-                party_events = party_platform.update(dt, state, display_w, current_time)
-                party_platform.draw_platform(frame, display_w, display_h)
-                for pe in party_events:
-                    if pe["type"] == "jump_success":
-                        score += pe["points"]
-                        particles.emit(pe["x"], display_h - 170, pe["color"], 25)
-                        floating_texts.add(f"{pe['tier']} +{pe['points']}", pe["x"] - 50, display_h - 220, pe["color"], 1.3)
-                        play_sound(snd_success)
-                    elif pe["type"] == "jump_miss":
-                        floating_texts.add("MISS!", display_w // 2 - 40, display_h - 220, pe["color"], 1.3)
-                        play_sound(snd_fail)
-
-            # Feature: Audio Reactivo (desactivado por defecto)
-            if FEATURES.enable_reactive_audio:
-                bpm_val = SONG_BPM.get(current_song, 115.0)
-                audio_reactive.update(current_time, bpm_val, is_playing=True)
-                audio_reactive.draw_reactive_visuals(frame, display_w, display_h)
-
-            if show_success_flash and current_time - success_flash_time < 0.25:
-                overlay_flash = gold_overlay if current_pose.get('variant') == 'GOLD' else green_overlay
-                cv2.addWeighted(overlay_flash, 0.15, frame, 0.85, 0, frame)
-            elif show_success_flash:
-                show_success_flash = False
+                    # Proporción anatómica centrada cuando no hay imagen o en modo solo silueta
+                    stick_x, stick_w = rx + (rw - 190) // 2, 190
+    
+                ref_pts = get_animated_ref_points(current_pose, current_time)
+                draw_full_body_stickman(frame, stick_x, ry + 10, stick_w, 165, ref_pts, banner_col)
+                draw_intent_arrows_in_box(frame, current_pose, stick_x, ry + 10, stick_w, 165, current_time)
+    
+                # --- RECORDATORIO DISCRETO EN ZONA 1 (FUERA DE SAFE ZONE) ---
+                cv2.putText(frame, "Gesto X en pecho = Saltar", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (170, 185, 210), 1, cv2.LINE_AA)
+    
+                particles.update_and_draw(frame)
+                floating_texts.update_and_draw(frame)
+    
+                # Feature: Gran Salto Party / Plataforma de Movimiento (desactivada por defecto)
+                if FEATURES.enable_party_platform:
+                    party_events = party_platform.update(dt, state, display_w, current_time)
+                    party_platform.draw_platform(frame, display_w, display_h)
+                    for pe in party_events:
+                        if pe["type"] == "jump_success":
+                            score += pe["points"]
+                            particles.emit(pe["x"], display_h - 170, pe["color"], 25)
+                            floating_texts.add(f"{pe['tier']} +{pe['points']}", pe["x"] - 50, display_h - 220, pe["color"], 1.3)
+                            play_sound(snd_success)
+                        elif pe["type"] == "jump_miss":
+                            floating_texts.add("MISS!", display_w // 2 - 40, display_h - 220, pe["color"], 1.3)
+                            play_sound(snd_fail)
+    
+                # Feature: Audio Reactivo (desactivado por defecto)
+                if FEATURES.enable_reactive_audio:
+                    bpm_val = SONG_BPM.get(current_song, 115.0)
+                    audio_reactive.update(current_time, bpm_val, is_playing=True)
+                    audio_reactive.draw_reactive_visuals(frame, display_w, display_h)
+    
+                if show_success_flash and current_time - success_flash_time < 0.25:
+                    overlay_flash = gold_overlay if current_pose.get('variant') == 'GOLD' else green_overlay
+                    cv2.addWeighted(overlay_flash, 0.15, frame, 0.85, 0, frame)
+                elif show_success_flash:
+                    show_success_flash = False
 
         # =========================================================
         # FEVER & SCREEN SHAKE
@@ -677,13 +696,8 @@ def main():
                                 p['variant'] = 'NORMAL'
                             pose_queue.append(p)
                         current_pose = pose_queue[0]
-                        if HAS_AUDIO:
-                            if current_song == "Sin Musica":
-                                pygame.mixer.music.stop()
-                            else:
-                                pygame.mixer.music.load(current_song)
-                                pygame.mixer.music.play(-1)
-                                pygame.mixer.music.set_volume(0.4)
+                        in_calibration = True
+                        calib_mgr.start()
                 else:
                     menu_both_start = None
 
@@ -731,8 +745,27 @@ def main():
         key = cv2.waitKey(1) & 0xFF
         if key == ord('q'):
             break
-        elif key == ord('m') or key == ord('c'):
+        elif key == ord('m'):
             show_menu = not show_menu
+            if show_menu and HAS_AUDIO:
+                pygame.mixer.music.pause()
+        elif in_calibration and (key == 13 or key == 32 or key == ord('c')):
+            calib_mgr.skip()
+            in_calibration = False
+            pose_start_time = current_time
+            state.reset()
+            if HAS_AUDIO and current_song and current_song != "Sin Musica":
+                try:
+                    pygame.mixer.music.load(current_song)
+                    pygame.mixer.music.play(-1)
+                    pygame.mixer.music.set_volume(0.4)
+                except Exception:
+                    pass
+        elif not show_menu and not in_calibration and key == ord('c'):
+            in_calibration = True
+            calib_mgr.start()
+            if HAS_AUDIO:
+                pygame.mixer.music.pause()
         elif key == ord('p') or key == 9:
             current_profile_idx = (current_profile_idx + 1) % len(PROFILE_KEYS)
             current_profile = PROFILE_KEYS[current_profile_idx]
@@ -753,7 +786,7 @@ def main():
             act = FEATURES.toggle_stickman_only()
             floating_texts.add(f"MODO VISUAL: {'SOLO SILUETA' if act else 'ILUS + COACH'}", 40, 250, (0, 255, 255), 1.2)
         elif key == ord('n') or key == 32:
-            if not show_menu:
+            if not show_menu and not in_calibration:
                 floating_texts.add("POSE SALTEADA!", 40, 310, (0, 100, 255), 1.3)
                 play_sound(snd_fail)
                 fever_gauge = max(0, fever_gauge - 20)
@@ -790,14 +823,8 @@ def main():
                 hold_progress = 0.0
                 pose_start_time = current_time
                 queue_slide_offset = 240.0
-
-                if HAS_AUDIO:
-                    if current_song == "Sin Musica":
-                        pygame.mixer.music.stop()
-                    else:
-                        pygame.mixer.music.load(current_song)
-                        pygame.mixer.music.play(-1)
-                        pygame.mixer.music.set_volume(0.4)
+                in_calibration = True
+                calib_mgr.start()
 
         if HAS_AUDIO and current_song and current_song != "Sin Musica" and not show_menu:
             if not pygame.mixer.music.get_busy():

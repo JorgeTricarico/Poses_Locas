@@ -55,8 +55,9 @@ graph TD
    * *Perfiles:* `JUNIOR`, `CARDIO`, `FIESTA`.
 2. **Mueve los Brazos!:**
    * *Acción del jugador:* Agitar y bombear los brazos arriba y abajo al ritmo de la música.
-   * *Biomecánica:* Articulación anatómica continua de hombros (`0.36, 0.32`), codos (`y: 0.28 ± 0.10`) y muñecas (`y: 0.16 ± 0.18`) en antifase armónica.
-   * *Flechas de intención:* Flechas verticales sube/baja (`↑` verde y `↓` magenta) con rótulo guía `"ARRIBA / ABAJO"`.
+   * *Biomecánica y Sincronización:* Oscilación armónica de hombros (`0.36, 0.32`), codos (`y: 0.28 ± 0.08`) y muñecas (`y: 0.25 ± 0.16`). Cuando el brazo izquierdo sube al cielo (`y` menor), la flecha indicadora izquierda apunta hacia arriba en verde neon y la derecha hacia abajo en magenta, sincronizadas al 100% con el detector.
+   * *Doble Modalidad de Detección:* Admite tanto ejecución alternada en antifase (un brazo sube mientras el otro baja) como bombeo simétrico conjunto (ambos brazos arriba y abajo simultáneamente), con filtro de rebote (debounce de 100 ms).
+   * *Flechas de intención:* Flechas pulsantes dinámicas con rótulo guía `"BOMBEA BRAZOS"`.
    * *Perfiles:* `JUNIOR`, `CARDIO`, `FIESTA`.
 3. **Mueve la Cabeza!:**
    * *Acción del jugador:* Asentir o inclinar la cabeza rítmicamente al compás musical.
@@ -145,3 +146,43 @@ A fin de permitir al equipo auditar cada pantalla, esquema articular y postura d
 3. **Ficha de Acción y Comprensión UI/UX:** Indicación textual de cómo pararse y qué acción hacer.
 4. **Galería de Ilustraciones Originales:** Vista previa de las imágenes asociadas.
 5. **Auditoría Técnica de Comprensión:** Calificación de legibilidad y sugerencias biomecánicas.
+
+---
+
+## 8. SISTEMA DE CALIBRACIÓN PRE-JUEGO Y PROTOCOLO BIOMÉTRICO
+
+Para garantizar que cada partida esté calibrada según la distancia física, altura y envergadura de cada jugador y evitar disparidades o descalibraciones en la cámara, se incorpora la **Fase de Calibración Pre-Juego Obligatoria (`poses_core.calibration.CalibrationManager`)**:
+
+```mermaid
+flowchart LR
+    A["Menú Canciones"] --> B["Paso 1: ¡Parate al Centro!\n(Center x: 0.35..0.65, 1.0s)"]
+    B --> C["Paso 2: ¡Abre Brazos en T!\n(T-Pose & Arm Span, 1.2s)"]
+    C --> D["Paso 3: ¡Brazos Arriba!\n(Alcance Vertical & Techo, 1.0s)"]
+    D --> E["Paso 4: ¡Calibrado! Cuenta 3..2..1"]
+    E --> F["Inicio Música & Gameplay"]
+    B -.->|"ENTER / Tecla C"| G["Salto Rápido a Partida\n(Valores seguros)"]
+    C -.->|"ENTER / Tecla C"| G
+    D -.->|"ENTER / Tecla C"| G
+    G --> F
+```
+
+### 8.1. Fases del Flujo de Calibración:
+1. **Paso 1: Pararse al Centro (`STEP_CENTER`, 1.0s):**
+   * *Objetivo:* Ubicar al jugador en el plano central (`0.35 <= nose_x <= 0.65`) y verificar visibilidad bilateral de hombros.
+   * *Métricas guardadas:* Centro de referencia (`calib_center_x`) y escala anatómica base `BodyUnit`.
+   * *Feedback visual:* Cuadro central verde neón con línea vertical guía.
+2. **Paso 2: T-Pose / Brazos en Cruz (`STEP_T_POSE`, 1.2s):**
+   * *Objetivo:* Extender ambos brazos horizontalmente a 90 grados.
+   * *Métricas guardadas:* Envergadura de brazos (`arm_span`), verificación de que las muñecas no salgan de los bordes laterales (`x < 0.04` o `x > 0.96`). Si las manos se cortan, el sistema instruye al usuario a dar un paso atrás.
+   * *Feedback visual:* Línea horizontal guía a la altura de los hombros con flechas expansivas hacia los costados.
+3. **Paso 3: Brazos al Cielo (`STEP_ARMS_UP`, 1.0s):**
+   * *Objetivo:* Levantar ambos brazos por encima de la cabeza.
+   * *Métricas guardadas:* Altura máxima de alcance (`reach_y`), confirmación de que la cámara no corta el techo.
+   * *Feedback visual:* Flechas verdes de elevación ascendente hacia el límite superior de pantalla.
+4. **Paso 4: Confirmación y Cuenta Regresiva (`STEP_READY`, 0.8s):**
+   * *Feedback visual:* Círculo central iluminado con aviso `¡VAMOS!` y arranque sincronizado de música y poses.
+
+### 8.2. Control y Accesibilidad:
+* **Salto Rápido:** Presionando `ENTER` o la tecla `C`, el usuario puede saltar la calibración en cualquier momento y arrancar de inmediato con los parámetros seguros por defecto.
+* **Recalibración en Caliente:** Durante la partida, presionar la tecla `C` pausa la pista musical y reabre la calibración en tiempo real si otro jugador toma el turno.
+

@@ -309,16 +309,16 @@ def get_animated_ref_points(pose_data, t):
     # 8. MUEVE LOS BRAZOS / GIRANDO / GUITARRA
     # =================================================================
     elif 'Mueve los Brazos' in name:
-        arm_wave = math.sin(t * 6.5) * 0.18
+        arm_cycle = math.sin(t * 6.0)
         # Hombros nivelados y estables
         pts['ls'] = (0.36, 0.32)
         pts['rs'] = (0.64, 0.32)
-        # Brazo izquierdo: codo y muñeca se mueven en perfecta continuidad anatómica
-        pts['le'] = (0.24, 0.28 + arm_wave * 0.55)
-        pts['lw'] = (0.16, 0.16 + arm_wave)
-        # Brazo derecho: oscila en antifase armónica (bombeo rítmico alternado)
-        pts['re'] = (0.76, 0.28 - arm_wave * 0.55)
-        pts['rw'] = (0.84, 0.16 - arm_wave)
+        # Brazo izquierdo: cuando arm_cycle > 0 sube al cielo (y menor), codo acompaña
+        pts['le'] = (0.24, 0.28 - arm_cycle * 0.08)
+        pts['lw'] = (0.18, 0.25 - arm_cycle * 0.16)
+        # Brazo derecho: oscila en antifase armónica (cuando izq sube, der baja a y mayor)
+        pts['re'] = (0.76, 0.28 + arm_cycle * 0.08)
+        pts['rw'] = (0.82, 0.25 + arm_cycle * 0.16)
         # Base corporal firme sin distorsión
         pts['lk'] = (0.41, 0.75)
         pts['rk'] = (0.59, 0.75)
@@ -425,18 +425,18 @@ def draw_intent_arrows_in_box(frame, pose_data, box_x, box_y, box_w, box_h, t):
             cv2.arrowedLine(frame, (cx + 15, y_jab), (cx - 25, y_jab), (80, 130, 255), 2, tipLength=0.4)
 
     elif 'Mueve los Brazos' in name:
-        wave_arr = math.sin(t * 6.5)
-        arr_ly = int(cy - 12 - wave_arr * 20)
-        arr_ry = int(cy - 12 + wave_arr * 20)
-        if wave_arr > 0:
-            cv2.arrowedLine(frame, (box_x + 18, arr_ly + 20), (box_x + 18, arr_ly - 10), (0, 255, 120), 2, tipLength=0.45)
+        arm_cycle = math.sin(t * 6.0)
+        arr_ly = int(cy - 12 - arm_cycle * 22)
+        arr_ry = int(cy - 12 + arm_cycle * 22)
+        if arm_cycle > 0:
+            # Izquierda sube (verde arriba), Derecha baja (rosa abajo)
+            cv2.arrowedLine(frame, (box_x + 18, cy + 20), (box_x + 18, cy - 24), (0, 255, 120), 2, tipLength=0.45)
+            cv2.arrowedLine(frame, (box_x + box_w - 18, cy - 20), (box_x + box_w - 18, cy + 24), (255, 100, 220), 2, tipLength=0.45)
         else:
-            cv2.arrowedLine(frame, (box_x + 18, arr_ly - 20), (box_x + 18, arr_ly + 10), (255, 100, 220), 2, tipLength=0.45)
-        if wave_arr < 0:
-            cv2.arrowedLine(frame, (box_x + box_w - 18, arr_ry + 20), (box_x + box_w - 18, arr_ry - 10), (0, 255, 120), 2, tipLength=0.45)
-        else:
-            cv2.arrowedLine(frame, (box_x + box_w - 18, arr_ry - 20), (box_x + box_w - 18, arr_ry + 10), (255, 100, 220), 2, tipLength=0.45)
-        cv2.putText(frame, "ARRIBA / ABAJO", (cx - 42, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.38, (255, 255, 255), 1, cv2.LINE_AA)
+            # Izquierda baja (rosa abajo), Derecha sube (verde arriba)
+            cv2.arrowedLine(frame, (box_x + 18, cy - 20), (box_x + 18, cy + 24), (255, 100, 220), 2, tipLength=0.45)
+            cv2.arrowedLine(frame, (box_x + box_w - 18, cy + 20), (box_x + box_w - 18, cy - 24), (0, 255, 120), 2, tipLength=0.45)
+        cv2.putText(frame, "BOMBEA BRAZOS", (cx - 44, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
 
 
 # =====================================================================

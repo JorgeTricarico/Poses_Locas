@@ -22,6 +22,9 @@ class PlayerState:
         self.spin_phase = 0
         self.arm_hits = 0
         self.last_arm_pos = None
+        self.last_alt_arm_pos = None
+        self.last_sym_arm_pos = None
+        self.last_arm_hit_time = 0
         self.move_hits = 0
         self.last_move_pos = None
         self.freeze_reference = None

@@ -39,6 +39,7 @@ from .rendering import (
 )
 from .capture import MockVideoCapture, VideoCaptureAsync
 from .engine import shift_queue, get_dynamic_progress, log_metric
+from .calibration import CalibrationStep, CalibrationData, CalibrationManager
 from .features import (
     FeatureFlags, FEATURES,
     DuoModeManager, CustomGhostRenderer,
