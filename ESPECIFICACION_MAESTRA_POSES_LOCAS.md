@@ -87,15 +87,31 @@ graph TD
    * *Acción del jugador:* Tocar guitarra imaginaria (rasgueo en mano derecha, mástil en izquierda).
    * *Biomecánica:* Oscilación rápida de muñeca derecha sobre cadera.
    * *Perfiles:* `JUNIOR`, `CARDIO`, `FIESTA`.
-10. **De Lado a Lado! (DESACTIVADA TEMPORALMENTE):**
-    * *Estado:* Deshabilitada en general para priorizar pruebas estáticas en el lugar. Excluida expresamente del perfil infantil por generar confusión de desplazamiento lateral en la habitación. Reemplazada por *Baila! Mueve Caderas*.
+10. **Remolino DJ!:**
+    * *Acción del jugador:* Mano izquierda anclada en cadera mientras la mano derecha dibuja círculos continuos en el aire (scratch de vinilo).
+    * *Biomecánica:* Rotación angular continua de muñeca alrededor del codo con radio > 0.06 BodyUnit.
+    * *Perfiles:* `FLOW`, `FIESTA`.
+11. **Fiebre Disco!:**
+    * *Acción del jugador:* Estilo John Travolta, alternando mano derecha apuntando alto en diagonal al cielo y bajo cruzando la cadera opuesta.
+    * *Biomecánica:* Alternancia rítmica diagonal de muñeca derecha (`y < nose.y` vs `y > shoulder.y + 0.10 BodyUnit`).
+    * *Perfiles:* `FLOW`, `CARDIO`, `FIESTA`.
+12. **Onda Electro!:**
+    * *Acción del jugador:* Brazo derecho extendido en guardia horizontal firme mientras el brazo izquierdo genera una ola ondulante ("wave").
+    * *Biomecánica:* Bombeo vertical de muñeca izquierda con brazo derecho bloqueado.
+    * *Perfiles:* `FLOW`, `FIESTA`.
+13. **Limpiaparabrisas!:**
+    * *Acción del jugador:* Ambos brazos en paralelo barriendo de izquierda a derecha en arco continuo como limpiaparabrisas de fiesta.
+    * *Biomecánica:* Oscilación simultánea de ambas muñecas por encima de los hombros.
+    * *Perfiles:* `FLOW`, `JUNIOR`, `FIESTA`.
+14. **De Lado a Lado! (DESACTIVADA TEMPORALMENTE):**
+    * *Estado:* Deshabilitada en general para priorizar pruebas estáticas en el lugar. Reemplazada por *Baila! Mueve Caderas*.
 
 ### 3.2. Poses Cognitivas y de Coordinación (Bajo Impacto Articular)
-11. **Cruzado al Oído!:** Cruce contralateral del brazo izquierdo hacia la oreja derecha mientras el brazo derecho descansa abajo. Reto neuro-motor propioceptivo.
-12. **Reloj 9 y 12!:** Brazo izquierdo horizontal a las 9 en punto y brazo derecho vertical a las 12 en punto.
-13. **Namasté Zen!:** Ambas palmas unidas en el centro del pecho con codos nivelados.
-14. **Marco Egipcio!:** Brazo izquierdo en ángulo hacia arriba y brazo derecho en ángulo hacia abajo formando un marco estilizado.
-15. **Congelados!:** Detección de quietud estricta durante 3 segundos midiendo varianza euclidiana articular (< 0.22).
+15. **Cruzado al Oído!:** Cruce contralateral del brazo izquierdo hacia la oreja derecha mientras el brazo derecho descansa abajo. Reto neuro-motor propioceptivo.
+16. **Reloj 9 y 12!:** Brazo izquierdo horizontal a las 9 en punto y brazo derecho vertical a las 12 en punto.
+17. **Namasté Zen!:** Ambas palmas unidas en el centro del pecho con codos nivelados.
+18. **Marco Egipcio!:** Brazo izquierdo en ángulo hacia arriba y brazo derecho en ángulo hacia abajo formando un marco estilizado.
+*(Nota: El modo "Congelados!" fue removido del catálogo por solicitud expresa del usuario para mantener la dinámica de baile activa sin frenar el flujo).*
 
 ### 3.3. Poses Estáticas Tradicionales
 16. **Brazos Arriba!:** Ambas manos elevadas en V por encima de la cabeza (`pose_brazos.jpg`).
@@ -113,6 +129,7 @@ graph TD
 
 | Perfil | Nombre en Pantalla | Filosofía y Selección de Poses | Tolerancia Hold |
 | :--- | :--- | :--- | :---: |
+| **`FLOW`** | **Freestyle Flow** | 100% dinámico, asimétrico y bailable (Remolino DJ, Fiebre Disco, Onda Electro, Limpiaparabrisas, Caderas, Brazos). **Cero poses estáticas**. | 5.5s (Estándar 1.0x) |
 | **`JUNIOR`** | **Aventura Junior** | 100% lúdico, expresivo y centrado en el lugar (caderas, cabeza, mono, avión, brazos arriba). **Sin traslaciones laterales**. | 7.5s (Grace buffer +30%) |
 | **`CARDIO`** | **Cardio Groove** | Alto gasto calórico, velocidad y ritmo intenso (saltos, sentadillas, boxeo, giros, caderas). | 5.0s (Grace buffer -15%) |
 | **`ZEN`** | **Mente Activa & Zen** | Cero impacto articular, rehabilitación y motricidad fina (cruces contralaterales, Namasté, reloj, marco egipcio). | 8.5s (Grace buffer +50%) |

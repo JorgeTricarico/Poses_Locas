@@ -10,30 +10,26 @@ from .catalog import get_poses_for_profile, COREOGRAFIAS
 
 def shift_queue(pose_queue, mode, song, coreo_idx, profile='FIESTA'):
     """Avanza la cola de poses asegurando variabilidad, coreografía o perfil."""
-    pose_queue.pop(0)
+    if pose_queue:
+        pose_queue.pop(0)
     if mode == 'COREO' and song in COREOGRAFIAS:
         coreo_idx = (coreo_idx + 1) % len(COREOGRAFIAS[song])
         p = dict(COREOGRAFIAS[song][coreo_idx])
         p['variant'] = 'NORMAL'
     else:
-        allow_freeze = (profile != 'ZEN')
-        roll = random.random()
-        if allow_freeze and roll < 0.12 and (not pose_queue or pose_queue[-1].get('name') != 'CONGELADOS!'):
-            p = {'name': 'CONGELADOS!', 'color': (255, 90, 90), 'is_freeze': True, 'variant': 'NORMAL'}
+        profile_poses = get_poses_for_profile(profile)
+        candidates = [x for x in profile_poses if not pose_queue or x['name'] != pose_queue[-1]['name']]
+        if not candidates:
+            candidates = profile_poses
+        p = dict(random.choice(candidates))
+        # Modificadores de Variabilidad
+        var_roll = random.random()
+        if var_roll < 0.15 and not p.get('dynamic') and profile == 'CARDIO':
+            p['variant'] = 'SPEED'  # Pose Relámpago
+        elif var_roll < 0.27:
+            p['variant'] = 'GOLD'   # Gold Move
         else:
-            profile_poses = get_poses_for_profile(profile)
-            candidates = [x for x in profile_poses if not pose_queue or x['name'] != pose_queue[-1]['name']]
-            if not candidates:
-                candidates = profile_poses
-            p = dict(random.choice(candidates))
-            # Modificadores de Variabilidad
-            var_roll = random.random()
-            if var_roll < 0.15 and not p.get('dynamic') and profile == 'CARDIO':
-                p['variant'] = 'SPEED'  # Pose Relámpago
-            elif var_roll < 0.27:
-                p['variant'] = 'GOLD'   # Gold Move
-            else:
-                p['variant'] = 'NORMAL'
+            p['variant'] = 'NORMAL'
 
     pose_queue.append(p)
     return pose_queue[0], coreo_idx
@@ -61,6 +57,14 @@ def get_dynamic_progress(pose_name, state):
         return state.spin_phase, 2, "GIRA 360!" if state.spin_phase == 0 else "COMPLETA EL GIRO!"
     elif 'Balanceo' in pose_name:
         return state.arm_hits, 6, f"FLOW: {state.arm_hits}/6"
+    elif 'Remolino' in pose_name or 'DJ' in pose_name:
+        return state.dj_steps // 4, 4, f"GIROS DJ: {state.dj_steps // 4}/4"
+    elif 'Disco' in pose_name:
+        return state.disco_hits, 6, f"DISCO: {state.disco_hits}/6"
+    elif 'Onda' in pose_name or 'Electro' in pose_name:
+        return state.wave_hits, 6, f"ONDAS: {state.wave_hits}/6"
+    elif 'Limpiaparabrisas' in pose_name:
+        return state.wiper_hits, 6, f"BARRIDOS: {state.wiper_hits}/6"
     return 0, 1, ""
 
 

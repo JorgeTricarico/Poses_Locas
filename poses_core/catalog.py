@@ -18,7 +18,8 @@ from .detectors import (
     check_egyptian_left_up_right_down, check_gentle_sway,
     check_shake_hips, check_shake_head, check_jump, check_squat,
     check_spin, check_flail_arms, check_move_side_to_side,
-    check_boxer_jabs, check_air_guitar, check_gesture_next
+    check_boxer_jabs, check_air_guitar, check_gesture_next,
+    check_dj_turntable, check_disco_point, check_electro_wave, check_windshield_wipers
 )
 
 # =====================================================================
@@ -53,31 +54,31 @@ POSES = [
         'name': 'Baila! Mueve Caderas', 'color': (255, 100, 180), 'icon_name': 'pose_caderas',
         'dynamic': True, 'checks': check_shake_hips,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.36, 0.58), R_WRIST: (0.64, 0.58), L_HIP: (0.42, 0.60), R_HIP: (0.58, 0.60) },
-        'tags': ['junior', 'cardio', 'dance', 'fun']
+        'tags': ['junior', 'cardio', 'dance', 'fun', 'flow']
     },
     {
         'name': 'Mueve la Cabeza!', 'color': (140, 255, 80), 'icon_name': 'pose_cabeza',
         'dynamic': True, 'checks': check_shake_head,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.30, 0.45), R_ELBOW: (0.70, 0.45), L_WRIST: (0.35, 0.60), R_WRIST: (0.65, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
-        'tags': ['junior', 'fun', 'gentle']
+        'tags': ['junior', 'fun', 'gentle', 'flow']
     },
     {
         'name': 'Balanceo Suave Flow!', 'color': (140, 220, 255),
         'dynamic': True, 'checks': check_gentle_sway,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.38), R_ELBOW: (0.72, 0.38), L_WRIST: (0.35, 0.45), R_WRIST: (0.65, 0.45), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
-        'tags': ['cognitive', 'zen', 'gentle']
+        'tags': ['cognitive', 'zen', 'gentle', 'flow']
     },
     {
         'name': 'Boxeo Rapido!', 'color': (80, 130, 255),
         'dynamic': True, 'checks': check_boxer_jabs,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.42), R_ELBOW: (0.72, 0.30), L_WRIST: (0.42, 0.24), R_WRIST: (0.62, 0.16), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
-        'tags': ['cardio', 'athletic']
+        'tags': ['cardio', 'athletic', 'flow']
     },
     {
         'name': 'Salto Mortal!', 'color': (80, 255, 120),
         'dynamic': True, 'checks': check_jump,
         'ref': { NOSE: (0.5, 0.08), L_SHOULDER: (0.36, 0.24), R_SHOULDER: (0.64, 0.24), L_ELBOW: (0.24, 0.15), R_ELBOW: (0.76, 0.15), L_WRIST: (0.18, 0.05), R_WRIST: (0.82, 0.05), L_HIP: (0.42, 0.48), R_HIP: (0.58, 0.48) },
-        'tags': ['cardio', 'athletic']
+        'tags': ['cardio', 'athletic', 'flow']
     },
     {
         'name': 'Agacharse!', 'color': (100, 180, 255),
@@ -89,13 +90,13 @@ POSES = [
         'name': 'Girando!', 'color': (255, 160, 0),
         'dynamic': True, 'checks': check_spin,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.46, 0.32), R_SHOULDER: (0.54, 0.32), L_ELBOW: (0.36, 0.46), R_ELBOW: (0.64, 0.46), L_WRIST: (0.32, 0.58), R_WRIST: (0.68, 0.58), L_HIP: (0.46, 0.62), R_HIP: (0.54, 0.62) },
-        'tags': ['cardio', 'athletic']
+        'tags': ['cardio', 'athletic', 'flow']
     },
     {
         'name': 'Mueve los Brazos!', 'color': (255, 60, 255),
         'dynamic': True, 'checks': check_flail_arms,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.18), R_ELBOW: (0.74, 0.45), L_WRIST: (0.20, 0.05), R_WRIST: (0.80, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
-        'tags': ['junior', 'fun', 'cardio']
+        'tags': ['junior', 'fun', 'cardio', 'flow']
     },
     {
         'name': 'De Lado a Lado!', 'color': (50, 255, 255),
@@ -107,7 +108,31 @@ POSES = [
         'name': 'Guitarra Rock!', 'color': (0, 255, 120),
         'dynamic': True, 'checks': check_air_guitar,
         'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.36), R_ELBOW: (0.72, 0.46), L_WRIST: (0.10, 0.30), R_WRIST: (0.55, 0.56), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
-        'tags': ['junior', 'fun', 'cardio']
+        'tags': ['junior', 'fun', 'cardio', 'flow']
+    },
+    {
+        'name': 'Remolino DJ!', 'color': (0, 240, 255),
+        'dynamic': True, 'checks': check_dj_turntable,
+        'ref': { NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.24, 0.45), R_ELBOW: (0.75, 0.35), L_WRIST: (0.40, 0.60), R_WRIST: (0.85, 0.35), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['flow', 'dance', 'fun']
+    },
+    {
+        'name': 'Fiebre Disco!', 'color': (255, 50, 220),
+        'dynamic': True, 'checks': check_disco_point,
+        'ref': { NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.24, 0.45), R_ELBOW: (0.75, 0.22), L_WRIST: (0.40, 0.60), R_WRIST: (0.90, 0.08), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['flow', 'dance', 'cardio']
+    },
+    {
+        'name': 'Onda Electro!', 'color': (255, 230, 0),
+        'dynamic': True, 'checks': check_electro_wave,
+        'ref': { NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.32), R_ELBOW: (0.78, 0.32), L_WRIST: (0.16, 0.20), R_WRIST: (0.92, 0.32), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['flow', 'dance', 'fun']
+    },
+    {
+        'name': 'Limpiaparabrisas!', 'color': (0, 255, 150),
+        'dynamic': True, 'checks': check_windshield_wipers,
+        'ref': { NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.30, 0.35), R_ELBOW: (0.70, 0.35), L_WRIST: (0.24, 0.18), R_WRIST: (0.64, 0.18), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'tags': ['flow', 'dance', 'fun']
     },
     
     # --- Poses Cognitivas y de Coordinación (Bajo Impacto, Cruces Contralaterales) ---
@@ -180,12 +205,6 @@ POSES = [
         'tags': ['junior', 'fun']
     },
     {
-        'name': 'Fiebre Disco!', 'color': (255, 90, 255),
-        'checks': {'left_arm': check_left_hand_on_hip, 'right_arm': check_right_arm_up},
-        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.24, 0.46), R_ELBOW: (0.74, 0.18), L_WRIST: (0.40, 0.58), R_WRIST: (0.86, 0.05), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
-        'tags': ['cardio', 'dance', 'fun']
-    },
-    {
         'name': 'Avion Supersonico!', 'color': (100, 255, 200),
         'checks': {'left_arm': check_airplane_left, 'right_arm': check_airplane_right},
         'ref': { NOSE: (0.48, 0.16), L_SHOULDER: (0.34, 0.36), R_SHOULDER: (0.62, 0.28), L_ELBOW: (0.18, 0.42), R_ELBOW: (0.76, 0.22), L_WRIST: (0.06, 0.48), R_WRIST: (0.92, 0.16), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
@@ -197,6 +216,14 @@ POSES = [
 # PERFILES DE EXPERIENCIA
 # =====================================================================
 PROFILES = {
+    'FLOW': {
+        'id': 'FLOW',
+        'name': 'FREESTYLE FLOW',
+        'subtitle': '100% Baile Dinamico y Asimetrico (Sin Poses Estaticas)',
+        'time': 5.5,
+        'grace_mult': 1.0,
+        'tags': {'flow'}
+    },
     'JUNIOR': {
         'id': 'JUNIOR',
         'name': 'AVENTURA JUNIOR',
@@ -230,7 +257,7 @@ PROFILES = {
         'tags': {'all'}
     }
 }
-PROFILE_KEYS = ['JUNIOR', 'CARDIO', 'ZEN', 'FIESTA']
+PROFILE_KEYS = ['FLOW', 'JUNIOR', 'CARDIO', 'ZEN', 'FIESTA']
 
 
 def get_poses_for_profile(profile_key):

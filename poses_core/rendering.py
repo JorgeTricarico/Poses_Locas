@@ -333,6 +333,63 @@ def get_animated_ref_points(pose_data, t):
     elif 'Guitarra' in name:
         strum = math.sin(t * 9.0) * 0.08
         if 'rw' in pts: pts['rw'] = (0.55 + strum, 0.56 + abs(strum)*0.5)
+    elif 'Remolino' in name or 'DJ' in name:
+        pts['ls'] = (0.36, 0.32)
+        pts['rs'] = (0.64, 0.32)
+        pts['le'] = (0.24, 0.44)
+        pts['lw'] = (0.38, 0.60)
+        cx_dj, cy_dj = 0.74, 0.40
+        rad_dj = 0.12
+        pts['re'] = (0.68, 0.36)
+        pts['rw'] = (cx_dj + rad_dj * math.cos(t * 7.5), cy_dj + rad_dj * math.sin(t * 7.5))
+        pts['lk'] = (0.41, 0.75)
+        pts['rk'] = (0.59, 0.75)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
+    elif 'Disco' in name:
+        pts['ls'] = (0.36, 0.32)
+        pts['rs'] = (0.64, 0.32)
+        pts['le'] = (0.24, 0.44)
+        pts['lw'] = (0.38, 0.60)
+        d_phase = math.sin(t * 5.0)
+        if d_phase > 0:
+            pts['re'] = (0.76, 0.22)
+            pts['rw'] = (0.88, 0.10)
+        else:
+            pts['re'] = (0.60, 0.45)
+            pts['rw'] = (0.44, 0.62)
+        pts['lk'] = (0.41, 0.75)
+        pts['rk'] = (0.59, 0.75)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
+    elif 'Onda' in name or 'Electro' in name:
+        pts['ls'] = (0.36, 0.32)
+        pts['rs'] = (0.64, 0.32)
+        pts['re'] = (0.78, 0.32)
+        pts['rw'] = (0.90, 0.32)
+        w_sin = math.sin(t * 6.5)
+        pts['le'] = (0.24, 0.32 + w_sin * 0.08)
+        pts['lw'] = (0.16, 0.30 - w_sin * 0.14)
+        pts['lk'] = (0.41, 0.75)
+        pts['rk'] = (0.59, 0.75)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
+    elif 'Limpiaparabrisas' in name:
+        w_sway = math.sin(t * 5.5) * 0.15
+        pts['ls'] = (0.36, 0.32)
+        pts['rs'] = (0.64, 0.32)
+        pts['le'] = (0.30 + w_sway, 0.35)
+        pts['lw'] = (0.22 + w_sway, 0.18)
+        pts['re'] = (0.70 + w_sway, 0.35)
+        pts['rw'] = (0.62 + w_sway, 0.18)
+        pts['lk'] = (0.41, 0.75)
+        pts['rk'] = (0.59, 0.75)
+        pts['la'] = (la_x, floor_y)
+        pts['ra'] = (ra_x, floor_y)
+        return pts
 
     # Para poses estáticas: respiración y presencia orgánica
     breathe = math.sin(t * 3.0) * 0.008
@@ -437,6 +494,42 @@ def draw_intent_arrows_in_box(frame, pose_data, box_x, box_y, box_w, box_h, t):
             cv2.arrowedLine(frame, (box_x + 18, cy - 20), (box_x + 18, cy + 24), (255, 100, 220), 2, tipLength=0.45)
             cv2.arrowedLine(frame, (box_x + box_w - 18, cy + 20), (box_x + box_w - 18, cy - 24), (0, 255, 120), 2, tipLength=0.45)
         cv2.putText(frame, "BOMBEA BRAZOS", (cx - 44, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+
+    elif 'Remolino' in name or 'DJ' in name:
+        cx_c = box_x + int(box_w * 0.76)
+        cy_c = box_y + int(box_h * 0.40)
+        cv2.circle(frame, (cx_c, cy_c), 20, (0, 240, 255), 2, cv2.LINE_AA)
+        angle_arr = (t * 7.5) % (2.0 * math.pi)
+        ax = int(cx_c + 20 * math.cos(angle_arr))
+        ay = int(cy_c + 20 * math.sin(angle_arr))
+        cv2.circle(frame, (ax, ay), 5, (0, 255, 120), -1, cv2.LINE_AA)
+        cv2.putText(frame, "GIRA DJ", (cx - 25, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+
+    elif 'Disco' in name:
+        d_val = math.sin(t * 5.0)
+        p1 = (box_x + int(box_w * 0.44), box_y + int(box_h * 0.65))
+        p2 = (box_x + int(box_w * 0.88), box_y + int(box_h * 0.14))
+        if d_val > 0:
+            cv2.arrowedLine(frame, p1, p2, (255, 50, 220), 3, tipLength=0.3)
+        else:
+            cv2.arrowedLine(frame, p2, p1, (0, 255, 255), 3, tipLength=0.3)
+        cv2.putText(frame, "PUNTO DISCO", (cx - 42, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+
+    elif 'Onda' in name or 'Electro' in name:
+        cv2.arrowedLine(frame, (cx + 10, cy - 10), (box_x + box_w - 18, cy - 10), (255, 230, 0), 2, tipLength=0.3)
+        w_p = math.sin(t * 6.5)
+        ly = int(cy - 10 + w_p * 18)
+        cv2.circle(frame, (box_x + 22, ly), 5, (0, 255, 200), -1, cv2.LINE_AA)
+        cv2.putText(frame, "OLA DE BRAZO", (cx - 42, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+
+    elif 'Limpiaparabrisas' in name:
+        w_val = math.sin(t * 5.5)
+        arc_y = box_y + int(box_h * 0.22)
+        if w_val > 0:
+            cv2.arrowedLine(frame, (cx - 26, arc_y), (cx + 36, arc_y), (0, 255, 150), 3, tipLength=0.4)
+        else:
+            cv2.arrowedLine(frame, (cx + 26, arc_y), (cx - 36, arc_y), (0, 255, 150), 3, tipLength=0.4)
+        cv2.putText(frame, "BARRIDO DANCE", (cx - 46, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
 
 
 # =====================================================================

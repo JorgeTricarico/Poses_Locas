@@ -2,7 +2,7 @@
 set -e
 
 # =====================================================================
-# POSES LOCAS AR — LANZADOR AUTONOMO PARA LINUX / RASPBERRY PI
+# POSES LOCAS — LANZADOR AUTONOMO PARA LINUX / RASPBERRY PI
 # =====================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

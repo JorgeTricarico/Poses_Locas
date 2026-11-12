@@ -400,3 +400,152 @@ def check_gesture_next(lm):
     l_cross = abs(lm[L_WRIST].x - lm[R_SHOULDER].x) < 0.15 and abs(lm[L_WRIST].y - lm[R_SHOULDER].y) < 0.15
     r_cross = abs(lm[R_WRIST].x - lm[L_SHOULDER].x) < 0.15 and abs(lm[R_WRIST].y - lm[L_SHOULDER].y) < 0.15
     return l_cross and r_cross
+
+
+def check_continuous_groove(state, lm, current_time):
+    """
+    Motor de Groove Continuo:
+    Evalua el ritmo de caderas durante cualquier momento del gameplay.
+    Premia al jugador con puntos continuos, combo y fever si no deja de bailar.
+    """
+    hip_x = (lm[L_HIP].x + lm[R_HIP].x) / 2.0
+    hip_y = (lm[L_HIP].y + lm[R_HIP].y) / 2.0
+
+    if state.global_center_x is None:
+        state.global_center_x = hip_x
+    else:
+        state.global_center_x = state.global_center_x * 0.98 + hip_x * 0.02
+
+    threshold = 0.024
+    min_interval = 0.18
+
+    # Reset de combo si el jugador deja de bailar por mas de 1.4 segundos
+    if current_time - getattr(state, 'last_groove_time', 0) > 1.4:
+        state.groove_combo = 0
+
+    if hip_x > state.global_center_x + threshold and state.global_last_side != 'right':
+        if current_time - getattr(state, 'last_groove_time', 0) >= min_interval:
+            state.global_last_side = 'right'
+            state.last_groove_time = current_time
+            state.groove_hits += 1
+            state.groove_combo = min(30, state.groove_combo + 1)
+            return True, 'right', hip_x, hip_y
+
+    elif hip_x < state.global_center_x - threshold and state.global_last_side != 'left':
+        if current_time - getattr(state, 'last_groove_time', 0) >= min_interval:
+            state.global_last_side = 'left'
+            state.last_groove_time = current_time
+            state.groove_hits += 1
+            state.groove_combo = min(30, state.groove_combo + 1)
+            return True, 'left', hip_x, hip_y
+
+    return False, None, hip_x, hip_y
+
+
+def check_dj_turntable(state, lm):
+    """
+    Pose Asimetrica de Baile: Remolino DJ!
+    Mano izquierda apoyada en cadera / cintura mientras la mano derecha
+    dibuja circulos continuos en el aire (scratch de vinilo DJ).
+    """
+    events = []
+    bu = get_body_unit(lm)
+
+    # Mano izquierda cerca de cadera izquierda
+    l_on_hip = abs(lm[L_WRIST].x - lm[L_HIP].x) < 0.22 and abs(lm[L_WRIST].y - lm[L_HIP].y) < 0.22
+
+    # Vector de muñeca derecha relativo al codo derecho
+    dx = lm[R_WRIST].x - lm[R_ELBOW].x
+    dy = lm[R_WRIST].y - lm[R_ELBOW].y
+    dist = math.hypot(dx, dy)
+
+    if l_on_hip and dist > 0.06 * bu:
+        curr_quad = 0 if (dx >= 0 and dy <= 0) else (1 if (dx < 0 and dy <= 0) else (2 if (dx < 0 and dy > 0) else 3))
+        if state.dj_quadrant is None:
+            state.dj_quadrant = curr_quad
+        elif curr_quad != state.dj_quadrant:
+            diff = (curr_quad - state.dj_quadrant) % 4
+            if diff in (1, 3):  # Avance angular continuo
+                state.dj_quadrant = curr_quad
+                state.dj_steps += 1
+                if state.dj_steps % 4 == 0:
+                    events.append({'type': 'hit', 'side': 'circle', 'x': lm[R_WRIST].x, 'y': lm[R_WRIST].y})
+
+    completed = state.dj_steps >= 16  # 4 giros completos
+    return completed, events
+
+
+def check_disco_point(state, lm):
+    """
+    Pose Asimetrica de Baile: Fiebre de Sabado (Disco Point)!
+    Mano izquierda en cintura, mano derecha alternando entre diagonal alta
+    hacia el cielo y diagonal baja cruzando la cadera opuesta.
+    """
+    events = []
+    bu = get_body_unit(lm)
+
+    # Diagonal Alta (apuntando al cielo a la derecha)
+    is_high = (lm[R_WRIST].y < lm[NOSE].y) and (lm[R_WRIST].x > lm[R_SHOULDER].x)
+    # Diagonal Baja (cruzando hacia la cadera izquierda)
+    is_low = (lm[R_WRIST].y > lm[R_SHOULDER].y + 0.10 * bu) and (lm[R_WRIST].x < lm[NOSE].x + 0.06)
+
+    curr = 'high' if is_high else ('low' if is_low else None)
+    if curr is not None:
+        if state.disco_phase is None:
+            state.disco_phase = curr
+        elif curr != state.disco_phase:
+            state.disco_phase = curr
+            state.disco_hits += 1
+            pt = lm[R_WRIST]
+            events.append({'type': 'hit', 'side': curr, 'x': pt.x, 'y': pt.y})
+
+    completed = state.disco_hits >= 6
+    return completed, events
+
+
+def check_electro_wave(state, lm):
+    """
+    Pose Asimetrica de Baile: Onda Electro!
+    Brazo derecho extendido en guardia/bloqueo mientras el brazo izquierdo
+    bombea ondas ritmicas arriba y abajo al compas.
+    """
+    events = []
+    r_guard = lm[R_WRIST].x > lm[R_SHOULDER].x + 0.05
+    is_up = lm[L_WRIST].y < lm[L_SHOULDER].y - 0.04
+    is_down = lm[L_WRIST].y > lm[L_SHOULDER].y + 0.04
+
+    curr = 'wave_up' if is_up else ('wave_down' if is_down else None)
+    if r_guard and curr is not None:
+        if state.wave_phase is None:
+            state.wave_phase = curr
+        elif curr != state.wave_phase:
+            state.wave_phase = curr
+            state.wave_hits += 1
+            events.append({'type': 'hit', 'side': curr, 'x': lm[L_WRIST].x, 'y': lm[L_WRIST].y})
+
+    completed = state.wave_hits >= 6
+    return completed, events
+
+
+def check_windshield_wipers(state, lm):
+    """
+    Pose Dinamica de Baile: Limpiaparabrisas Dance!
+    Ambos brazos en paralelo barriendo de izquierda a derecha en arco continuo.
+    """
+    events = []
+    both_up = lm[L_WRIST].y < lm[L_SHOULDER].y + 0.12 and lm[R_WRIST].y < lm[R_SHOULDER].y + 0.12
+    hands_x = (lm[L_WRIST].x + lm[R_WRIST].x) / 2.0
+    nose_x = lm[NOSE].x
+    diff = hands_x - nose_x
+
+    curr = 'wiper_right' if diff > 0.07 else ('wiper_left' if diff < -0.07 else None)
+    if both_up and curr is not None:
+        if state.wiper_phase is None:
+            state.wiper_phase = curr
+        elif curr != state.wiper_phase:
+            state.wiper_phase = curr
+            state.wiper_hits += 1
+            events.append({'type': 'hit', 'side': curr, 'x': hands_x, 'y': (lm[L_WRIST].y + lm[R_WRIST].y) / 2.0})
+
+    completed = state.wiper_hits >= 6
+    return completed, events

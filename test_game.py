@@ -40,11 +40,12 @@ from poses_locas import (
     check_monkey_left, check_monkey_right, check_airplane_left, check_airplane_right,
     check_shake_hips, check_shake_head, check_jump, check_squat,
     check_flail_arms, check_move_side_to_side, check_boxer_jabs, check_air_guitar,
+    check_continuous_groove, check_dj_turntable, check_disco_point, check_electro_wave, check_windshield_wipers,
     check_contralateral_left_to_right, check_contralateral_right_to_left,
     check_namaste_center, check_clock_arms_9_12, check_clock_arms_12_3,
     check_egyptian_left_up_right_down, check_gentle_sway,
     PROFILES, PROFILE_KEYS, get_poses_for_profile,
-    POSES, COREOGRAFIAS,
+    POSES, COREOGRAFIAS, shift_queue,
     FeatureFlags, FEATURES, DuoModeManager, CustomGhostRenderer,
     AudioReactiveEngine, PartyPlatformEngine,
     MockVideoCapture, VideoCaptureAsync,
@@ -275,6 +276,76 @@ def run_dynamic_pose_tests():
         if done: break
     assert_true(done, "Mueve los brazos simetrico completado")
 
+    # 8. Remolino DJ! (Asimetrico: Mano en cadera + giros circulares)
+    state = PlayerState()
+    done = False
+    for step in range(20):
+        lm = make_base_skeleton()
+        lm[L_WRIST] = MockLM(0.42, 0.62) # Mano en cadera izquierda
+        # Simular cuadrantes de giro: 0 -> 1 -> 2 -> 3
+        q = step % 4
+        offsets = [(0.10, -0.10), (-0.10, -0.10), (-0.10, 0.10), (0.10, 0.10)]
+        ox, oy = offsets[q]
+        lm[R_WRIST] = MockLM(lm[R_ELBOW].x + ox, lm[R_ELBOW].y + oy)
+        done, _ = check_dj_turntable(state, lm)
+        if done: break
+    assert_true(done, f"Remolino DJ completado ({state.dj_steps}/16 pasos)")
+
+    # 9. Fiebre Disco! (Diagonal Alta / Baja cruzada)
+    state = PlayerState()
+    done = False
+    for i in range(14):
+        lm = make_base_skeleton()
+        if i % 2 == 0:
+            lm[R_WRIST] = MockLM(0.88, 0.10) # Diagonal alta der
+        else:
+            lm[R_WRIST] = MockLM(0.45, 0.55) # Diagonal baja cruzada
+        done, _ = check_disco_point(state, lm)
+        if done: break
+    assert_true(done, "Fiebre Disco completada")
+
+    # 10. Onda Electro! (Guardia der + Ola izq)
+    state = PlayerState()
+    done = False
+    for i in range(14):
+        lm = make_base_skeleton()
+        lm[R_WRIST] = MockLM(0.90, 0.32) # Guardia derecha firme
+        if i % 2 == 0:
+            lm[L_WRIST] = MockLM(0.20, 0.18) # Ola arriba
+        else:
+            lm[L_WRIST] = MockLM(0.20, 0.42) # Ola abajo
+        done, _ = check_electro_wave(state, lm)
+        if done: break
+    assert_true(done, "Onda Electro completada")
+
+    # 11. Limpiaparabrisas Dance! (Barrido paralelo de brazos)
+    state = PlayerState()
+    done = False
+    for i in range(14):
+        lm = make_base_skeleton()
+        x_shift = 0.14 if i % 2 == 0 else -0.14
+        lm[L_WRIST] = MockLM(0.35 + x_shift, 0.22)
+        lm[R_WRIST] = MockLM(0.65 + x_shift, 0.22)
+        done, _ = check_windshield_wipers(state, lm)
+        if done: break
+    assert_true(done, "Limpiaparabrisas Dance completado")
+
+    # 12. Motor de Groove Continuo de Caderas
+    state = PlayerState()
+    now = 100.0
+    lm_left = make_base_skeleton()
+    lm_left[L_HIP] = MockLM(0.36, 0.65)
+    lm_left[R_HIP] = MockLM(0.52, 0.65)
+    lm_right = make_base_skeleton()
+    lm_right[L_HIP] = MockLM(0.48, 0.65)
+    lm_right[R_HIP] = MockLM(0.64, 0.65)
+
+    check_continuous_groove(state, make_base_skeleton(), now) # init
+    g1, side1, _, _ = check_continuous_groove(state, lm_left, now + 0.25)
+    g2, side2, _, _ = check_continuous_groove(state, lm_right, now + 0.50)
+    assert_true(g1 or g2, "Groove continuo debe detectar oscilacion de caderas")
+    assert_true(state.groove_hits >= 1, "Groove hits debe acumularse")
+
     print("      -> Todas las poses dinamicas pasaron la suite!")
 
 def run_cognitive_and_profile_tests():
@@ -362,7 +433,24 @@ def run_cognitive_and_profile_tests():
     assert_true('Mueve la Cabeza!' in junior_names, "Junior debe incluir Mueve la Cabeza!")
     assert_true('Letra Y!' in junior_names, "Junior debe incluir Letra Y!")
 
-    print("      -> Todas las 5 poses cognitivas y los 4 perfiles pasaron la suite!")
+    # Perfil FLOW: 100% Baile Dinamico y Asimetrico (Cero Poses Estaticas)
+    flow_poses = get_poses_for_profile('FLOW')
+    assert_true(len(flow_poses) >= 5, f"Perfil FLOW debe contener al menos 5 poses dinamicas, tiene {len(flow_poses)}")
+    for p in flow_poses:
+        assert_true(p.get('dynamic', False), f"Pose {p['name']} en FLOW debe ser 100% dinamica")
+    flow_names = [p['name'] for p in flow_poses]
+    assert_true('Remolino DJ!' in flow_names, "FLOW debe incluir Remolino DJ!")
+    assert_true('Fiebre Disco!' in flow_names, "FLOW debe incluir Fiebre Disco!")
+    assert_true('Baila! Mueve Caderas' in flow_names, "FLOW debe incluir Baila! Mueve Caderas")
+
+    # Verificacion: Eliminacion Definitiva de 'CONGELADOS!'
+    test_q = []
+    for _ in range(60):
+        shift_queue(test_q, 'LIBRE', 'despacito.wav', 0, 'FIESTA')
+    freeze_found = [p for p in test_q if p.get('is_freeze') or p.get('name') == 'CONGELADOS!']
+    assert_eq(len(freeze_found), 0, "CONGELADOS! debe estar completamente erradicado de la rotacion")
+
+    print("      -> Todas las 5 poses cognitivas, perfil FLOW y los 5 perfiles pasaron la suite!")
 
 def run_visual_and_auditor_tests():
     print("[5/6] Renderizando Escenas Reales Arquitectura 2.0 (5 Zonas AAA)...")

@@ -1,11 +1,11 @@
 [Desktop Entry]
 StartupNotify=true
 Version=1.0
-Name=Poses Locas AR
+Name=Poses Locas
 Comment=Juego de baile, poses y coordinacion corporal para toda la familia
 Exec=/bin/bash -c "export DISPLAY=:0 && export QT_QPA_PLATFORM=xcb && export SDL_AUDIODRIVER=pulseaudio && /home/jorge/miniforge3/envs/mp_env/bin/python /home/jorge/Juegos/poses_locas/poses_locas.py"
 Path=/home/jorge/Juegos/poses_locas
-Icon=/home/jorge/Juegos/poses_locas/android_app/icon.png
+Icon=/home/jorge/Juegos/poses_locas/icon.png
 Terminal=false
 Type=Application
 Categories=Game;

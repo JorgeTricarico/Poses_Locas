@@ -33,3 +33,13 @@ class PlayerState:
         self.global_center_x = None
         self.global_last_side = None
         self.last_groove_time = 0
+        self.groove_hits = 0
+        self.groove_combo = 0
+        self.dj_quadrant = None
+        self.dj_steps = 0
+        self.disco_phase = None
+        self.disco_hits = 0
+        self.wave_phase = None
+        self.wave_hits = 0
+        self.wiper_phase = None
+        self.wiper_hits = 0

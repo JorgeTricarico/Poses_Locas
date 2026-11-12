@@ -43,6 +43,8 @@ from poses_core import (
     check_spin, check_flail_arms, check_move_side_to_side,
     check_boxer_jabs, check_air_guitar, check_hand_head_shake_hips,
     check_jump_arms_up, check_spin_hand_head, check_gesture_next,
+    check_continuous_groove,
+    check_dj_turntable, check_disco_point, check_electro_wave, check_windshield_wipers,
     POSES, PROFILES, PROFILE_KEYS, COREOGRAFIAS, SONG_BPM,
     get_poses_for_profile, get_beat_pulse,
     blend_rect_roi, load_pose_illustration_clean, draw_star_icon, draw_bolt_icon,
@@ -126,7 +128,7 @@ def main():
         pose_detector = None
 
     display_w, display_h = 1280, 720
-    WINDOW_NAME = "Poses Locas AR"
+    WINDOW_NAME = "Poses Locas"
     cv2.namedWindow(WINDOW_NAME, cv2.WINDOW_NORMAL)
     cv2.setWindowProperty(WINDOW_NAME, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
@@ -281,63 +283,21 @@ def main():
                             state.reset()
                     else:
                         control_gesture_start = None
-    
-                        # --- POSE: CONGELADOS! ---
-                        if current_pose.get('is_freeze'):
-                            left_score, right_score = 1.0, 1.0
-                            left_ok, right_ok = True, True
-                            if hold_progress == 0.0 and state.freeze_reference is None:
-                                state.freeze_reference = [{"x": lm[kp].x, "y": lm[kp].y} for kp in [NOSE, L_WRIST, R_WRIST, L_HIP, R_HIP]]
-    
-                            movement = 0.0
-                            if state.freeze_reference:
-                                for i, kp in enumerate([NOSE, L_WRIST, R_WRIST, L_HIP, R_HIP]):
-                                    dx = lm[kp].x - state.freeze_reference[i]["x"]
-                                    dy = lm[kp].y - state.freeze_reference[i]["y"]
-                                    movement += math.hypot(dx, dy)
-    
-                            time_left = max(0.0, 3.0 - (current_time - pose_start_time))
-                            blend_rect_roi(frame, 400, 18, 480, 85, (15, 15, 30), 0.85)
-                            cv2.rectangle(frame, (400, 18), (880, 103), (0, 215, 255), 2)
-                            cv2.putText(frame, f"CONGELADOS! {time_left:.1f}s", (435, 58), cv2.FONT_HERSHEY_DUPLEX, 1.2, (0, 255, 255), 2, cv2.LINE_AA)
-                            draw_progress_bar(frame, 425, 70, 430, 20, time_left / 3.0, (0, 215, 255))
-    
-                            if movement > 0.22:
-                                floating_texts.add("TE MOVISTE!", 40, 310, (60, 60, 255), 1.8)
-                                play_sound(snd_fail)
-                                fever_gauge = max(0, fever_gauge - 40)
-                                shake_time = current_time
-                                streak = 0
-                                log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'FAILED')
-                                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
-                                pose_start_time = current_time
-                                hold_progress = 0.0
-                                queue_slide_offset = 240.0
-                                state.reset()
-                            elif time_left <= 0:
-                                multiplier = 3 if fever_active else (1 + int(streak // 3))
-                                points = int(1000 * multiplier)
-                                score += points
-                                poses_completed += 1
-                                streak += 1
+
+                        # --- GROOVE CONTINUO DE CADERAS (RITMO GLOBAL) ---
+                        if 'Caderas' not in current_pose.get('name', ''):
+                            has_groove, g_side, gx, gy = check_continuous_groove(state, lm, current_time)
+                            if has_groove:
+                                g_pts = int(40 * multiplier)
+                                score += g_pts
                                 if not fever_active:
-                                    fever_gauge = min(100, fever_gauge + 20)
-                                    if fever_gauge >= 100:
-                                        fever_active = True
-                                        fever_start_time = current_time
-                                        floating_texts.add("FEVER TIME!", display_w//2 - 160, 220, (0, 255, 255), 2.4)
-                                particles.emit(display_w // 2, 340, (255, 255, 255), 45)
-                                floating_texts.add(f"SOBREVIVISTE! +{points}", 40, 310, (0, 255, 120), 1.8)
-                                play_sound(snd_success)
-                                log_metric(current_mode, 'CONGELADOS!', current_time - pose_start_time, 'COMPLETED')
-                                current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
-                                pose_start_time = current_time
-                                hold_progress = 0.0
-                                queue_slide_offset = 240.0
-                                state.reset()
-    
+                                    fever_gauge = min(100, fever_gauge + 2)
+                                particles.emit(int(gx * display_w), int(gy * display_h), (255, 100, 220), 12)
+                                if state.groove_combo >= 2 and state.groove_combo % 2 == 0:
+                                    floating_texts.add(f"GROOVE x{state.groove_combo} +{g_pts}", int(gx * display_w) - 60, int(gy * display_h) - 30, (255, 120, 240), 1.1)
+
                         # --- POSES DINÁMICAS ---
-                        elif current_pose.get('dynamic'):
+                        if current_pose.get('dynamic'):
                             completed, events = current_pose['checks'](state, lm)
                             left_score, right_score = 1.0, 1.0
                             left_ok, right_ok = True, True
@@ -545,7 +505,7 @@ def main():
                     cv2.rectangle(frame, (bx + 24, by + 40), (bx + 24 + int((bw - 48) * prog_val), by + 58), banner_col, -1)
                     cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (255, 255, 255), 1)
                     cv2.putText(frame, lbl, (bx + 35, by + 54), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
-                elif not current_pose.get('is_freeze'):
+                else:
                     cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (45, 45, 60), -1)
                     cv2.rectangle(frame, (bx + 24, by + 40), (bx + 24 + int((bw - 48) * hold_progress), by + 58), (0, 210, 110), -1)
                     cv2.rectangle(frame, (bx + 24, by + 40), (bx + bw - 24, by + 58), (255, 255, 255), 1)
@@ -572,8 +532,11 @@ def main():
                 draw_full_body_stickman(frame, stick_x, ry + 10, stick_w, 165, ref_pts, banner_col)
                 draw_intent_arrows_in_box(frame, current_pose, stick_x, ry + 10, stick_w, 165, current_time)
     
-                # --- RECORDATORIO DISCRETO EN ZONA 1 (FUERA DE SAFE ZONE) ---
-                cv2.putText(frame, "Gesto X en pecho = Saltar", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (170, 185, 210), 1, cv2.LINE_AA)
+                # --- RECORDATORIO / ESTADO GROOVE EN ZONA 1 (FUERA DE SAFE ZONE) ---
+                if state.groove_combo >= 2:
+                    cv2.putText(frame, f"GROOVE CADERAS x{state.groove_combo}", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 120, 240), 1, cv2.LINE_AA)
+                else:
+                    cv2.putText(frame, "Gesto X en pecho = Saltar", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (170, 185, 210), 1, cv2.LINE_AA)
     
                 particles.update_and_draw(frame)
                 floating_texts.update_and_draw(frame)
@@ -631,9 +594,11 @@ def main():
 
             # Selector de Perfil de Experiencia
             prof = PROFILES[current_profile]
-            p_color = (0, 255, 120) if current_profile == 'ZEN' else (
-                (0, 215, 255) if current_profile == 'JUNIOR' else (
-                    (255, 100, 200) if current_profile == 'CARDIO' else (255, 215, 0)
+            p_color = (255, 60, 255) if current_profile == 'FLOW' else (
+                (0, 255, 120) if current_profile == 'ZEN' else (
+                    (0, 215, 255) if current_profile == 'JUNIOR' else (
+                        (255, 100, 200) if current_profile == 'CARDIO' else (255, 215, 0)
+                    )
                 )
             )
             blend_rect_roi(frame, display_w//2 - 360, 138, 720, 52, (20, 22, 38), 0.90)

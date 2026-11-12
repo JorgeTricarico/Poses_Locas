@@ -24,7 +24,9 @@ from .detectors import (
     check_shake_hips, check_shake_head, check_jump, check_squat,
     check_spin, check_flail_arms, check_move_side_to_side,
     check_boxer_jabs, check_air_guitar, check_hand_head_shake_hips,
-    check_jump_arms_up, check_spin_hand_head, check_gesture_next
+    check_jump_arms_up, check_spin_hand_head, check_gesture_next,
+    check_continuous_groove, check_dj_turntable, check_disco_point,
+    check_electro_wave, check_windshield_wipers
 )
 from .catalog import (
     POSES, PROFILES, PROFILE_KEYS, COREOGRAFIAS, SONG_BPM,
