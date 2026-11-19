@@ -40,6 +40,7 @@ from poses_locas import (
     check_monkey_left, check_monkey_right, check_airplane_left, check_airplane_right,
     check_shake_hips, check_shake_head, check_jump, check_squat,
     check_flail_arms, check_move_side_to_side, check_boxer_jabs, check_air_guitar,
+    check_hand_head_shake_hips, check_jump_arms_up, check_spin_hand_head, check_gesture_next, check_cross_arms_chest,
     check_continuous_groove, check_dj_turntable, check_disco_point, check_electro_wave, check_windshield_wipers,
     check_contralateral_left_to_right, check_contralateral_right_to_left,
     check_namaste_center, check_clock_arms_9_12, check_clock_arms_12_3,
@@ -774,6 +775,84 @@ def run_regression_tests():
     assert_true(0.08 <= pts_wave_up['lw'][1] <= 0.75, "Brazo izq dentro de limites visuales")
     assert_true(0.08 <= pts_wave_up['rw'][1] <= 0.75, "Brazo der dentro de limites visuales")
     print("      -> Sincronia biomecanica de brazos y correspondencia visual OK!")
+
+    # 6. Anti-regresion: Sin auto-pases ni skips accidentales con cuerpo de nino (scale=0.55)
+    def make_child_lm(lx_off=0.0, ly_off=0.0, rx_off=0.0, ry_off=0.0):
+        s = 0.55
+        clm = [MockLM(0.5, 0.5, 0.9) for _ in range(33)]
+        cx, cy = 0.5, 0.35
+        clm[NOSE] = MockLM(cx, cy - 0.14 * s)
+        clm[L_EAR] = MockLM(cx - 0.05 * s, cy - 0.15 * s)
+        clm[R_EAR] = MockLM(cx + 0.05 * s, cy - 0.15 * s)
+        clm[L_SHOULDER] = MockLM(cx - 0.12 * s, cy)
+        clm[R_SHOULDER] = MockLM(cx + 0.12 * s, cy)
+        clm[L_ELBOW] = MockLM(cx - 0.15 * s, cy + 0.14 * s)
+        clm[R_ELBOW] = MockLM(cx + 0.15 * s, cy + 0.14 * s)
+        clm[L_WRIST] = MockLM(cx - 0.14 * s + lx_off, cy + 0.28 * s + ly_off)
+        clm[R_WRIST] = MockLM(cx + 0.14 * s + rx_off, cy + 0.28 * s + ry_off)
+        clm[L_HIP] = MockLM(cx - 0.08 * s, cy + 0.30 * s)
+        clm[R_HIP] = MockLM(cx + 0.08 * s, cy + 0.30 * s)
+        return clm
+
+    for desc, clm in [
+        ("reposo", make_child_lm()),
+        ("manos_frente", make_child_lm(0.06, -0.10, -0.06, -0.10)),
+        ("brazos_cruzados", make_child_lm(0.14, -0.14, -0.14, -0.14)),
+    ]:
+        assert_true(not check_gesture_next(clm), f"Nino en {desc} no debe activar salto de pose accidental")
+        for p in POSES:
+            if p.get('dynamic') or p.get('disabled'):
+                continue
+            chk = p['checks']
+            passed = chk['left_arm'](clm) and chk['right_arm'](clm)
+            assert_true(not passed, f"Pose estatica '{p['name']}' no debe auto-pasar en {desc}")
+    print("      -> Cero auto-pases ni skips accidentales en cuerpo de nino OK!")
+
+    # 7. Anti-regresion: Guitarra Rock no debe pasar solo por bajar un brazo
+    st_g = PlayerState()
+    done_g = False
+    for step in range(8):
+        g_lm = make_base_skeleton()
+        g_lm[L_WRIST] = MockLM(0.40, 0.55)  # Sin mano izq en mastil
+        g_lm[R_WRIST] = MockLM(0.58, 0.20 + step * 0.06)  # Caida monotonica
+        done_g, _ = check_air_guitar(st_g, g_lm)
+    assert_true(not done_g, "Guitarra Rock no debe completar solo bajando el brazo sin mastil")
+
+    # 8. Anti-regresion: Limpiaparabrisas y Balanceo en nino + stickman sin cruce facial
+    st_w = PlayerState()
+    done_w = False
+    for i in range(10):
+        w_lm = make_child_lm()
+        sh = 0.06 if i % 2 == 0 else -0.06
+        w_lm[L_WRIST] = MockLM(0.45 + sh, 0.28)
+        w_lm[R_WRIST] = MockLM(0.55 + sh, 0.28)
+        done_w, _ = check_windshield_wipers(st_w, w_lm)
+        if done_w:
+            break
+    assert_true(done_w, "Limpiaparabrisas debe funcionar con escala de nino")
+
+    pts_wiper = get_animated_ref_points({'name': 'Limpiaparabrisas!', 'dynamic': True}, t=0.35)
+    assert_true(pts_wiper['lw'][0] < 0.40 and pts_wiper['rw'][0] > 0.60, "Stickman Limpiaparabrisas no debe tapar la cara")
+
+    # 9. Anti-regresion: Gesto Skip intencional y bloqueo de giro lateral
+    skip_ok = make_base_skeleton()
+    skip_ok[L_WRIST] = MockLM(0.75, 0.32)
+    skip_ok[R_WRIST] = MockLM(0.85, 0.32)
+    assert_true(check_gesture_next(skip_ok), "Empuje con 2 manos a la derecha debe activar skip intencional")
+    skip_side = make_base_skeleton()
+    skip_side[L_SHOULDER] = MockLM(0.50, 0.32)
+    skip_side[R_SHOULDER] = MockLM(0.52, 0.32)  # Perfil
+    skip_side[L_WRIST] = MockLM(0.75, 0.32)
+    skip_side[R_WRIST] = MockLM(0.85, 0.32)
+    assert_true(not check_gesture_next(skip_side), "Giro de perfil no debe activar skip accidental")
+
+    # 10. Anti-regresion: Audio sin cola de silencio prolongada en Modo Libre
+    if os.path.exists("asereje.wav"):
+        import wave
+        with wave.open("asereje.wav", "rb") as wf:
+            dur = wf.getnframes() / wf.getframerate()
+        assert_true(dur < 230.0, f"asereje.wav debe tener la cola silenciosa recortada (<230s), mide {dur:.1f}s")
+    print("      -> Audio continuo, Limpiaparabrisas, Guitarra y Gesto Skip verificados OK!")
 
 def run_calibration_tests():
     print("[6.5/7] Probando Sistema de Calibracion Pre-Juego (Centro -> T-Pose -> Brazos Arriba)...")

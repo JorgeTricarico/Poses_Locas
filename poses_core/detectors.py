@@ -1,5 +1,6 @@
 """
 Módulo de Detección de Poses (Estáticas, Cognitivas y Dinámicas)
+Normalizado por BodyUnit (bu) para escalar correctamente tanto en niños como en adultos.
 """
 
 import math
@@ -14,101 +15,161 @@ from .geometry import (
 # CHECKS ESTÁTICOS
 # =====================================================================
 def check_left_arm_up(lm):
-    return lm[L_WRIST].y < lm[NOSE].y - 0.05
+    bu = get_body_unit(lm)
+    return lm[L_WRIST].y < lm[NOSE].y - 0.15 * bu
 
 
 def check_right_arm_up(lm):
-    return lm[R_WRIST].y < lm[NOSE].y - 0.05
+    bu = get_body_unit(lm)
+    return lm[R_WRIST].y < lm[NOSE].y - 0.15 * bu
 
 
 def check_left_arm_down(lm):
-    return lm[L_WRIST].y > lm[L_SHOULDER].y + 0.05
+    bu = get_body_unit(lm)
+    return lm[L_WRIST].y > lm[L_SHOULDER].y + 0.20 * bu
 
 
 def check_right_arm_down(lm):
-    return lm[R_WRIST].y > lm[R_SHOULDER].y + 0.05
+    bu = get_body_unit(lm)
+    return lm[R_WRIST].y > lm[R_SHOULDER].y + 0.20 * bu
 
 
 def check_left_arm_horizontal(lm):
-    return abs(lm[L_WRIST].y - lm[L_SHOULDER].y) < 0.12 and lm[L_WRIST].x < lm[L_SHOULDER].x - 0.08
+    bu = get_body_unit(lm)
+    return (
+        abs(lm[L_WRIST].y - lm[L_SHOULDER].y) < 0.50 * bu
+        and lm[L_WRIST].x < lm[L_SHOULDER].x - 0.42 * bu
+    )
 
 
 def check_right_arm_horizontal(lm):
-    return abs(lm[R_WRIST].y - lm[R_SHOULDER].y) < 0.12 and lm[R_WRIST].x > lm[R_SHOULDER].x + 0.08
+    bu = get_body_unit(lm)
+    return (
+        abs(lm[R_WRIST].y - lm[R_SHOULDER].y) < 0.50 * bu
+        and lm[R_WRIST].x > lm[R_SHOULDER].x + 0.42 * bu
+    )
 
 
 def check_left_hand_on_hip(lm):
-    return abs(lm[L_WRIST].x - lm[L_HIP].x) < 0.15 and abs(lm[L_WRIST].y - lm[L_HIP].y) < 0.15
+    bu = get_body_unit(lm)
+    near_hip = (
+        abs(lm[L_WRIST].x - lm[L_HIP].x) < 0.65 * bu
+        and abs(lm[L_WRIST].y - lm[L_HIP].y) < 0.65 * bu
+    )
+    elbow_out = abs(lm[L_ELBOW].x - lm[L_HIP].x) > 0.22 * bu
+    return near_hip and elbow_out
 
 
 def check_right_hand_on_hip(lm):
-    return abs(lm[R_WRIST].x - lm[R_HIP].x) < 0.15 and abs(lm[R_WRIST].y - lm[R_HIP].y) < 0.15
+    bu = get_body_unit(lm)
+    near_hip = (
+        abs(lm[R_WRIST].x - lm[R_HIP].x) < 0.65 * bu
+        and abs(lm[R_WRIST].y - lm[R_HIP].y) < 0.65 * bu
+    )
+    elbow_out = abs(lm[R_ELBOW].x - lm[R_HIP].x) > 0.22 * bu
+    return near_hip and elbow_out
 
 
 def check_left_hand_on_head(lm):
-    return (abs(lm[L_WRIST].x - lm[NOSE].x) < 0.12 or abs(lm[L_WRIST].x - lm[L_EAR].x) < 0.12) and (
-        abs(lm[L_WRIST].y - lm[NOSE].y) < 0.12 or abs(lm[L_WRIST].y - lm[L_EAR].y) < 0.12
-    )
+    bu = get_body_unit(lm)
+    tol = max(0.055, 0.50 * bu)
+    near_x = abs(lm[L_WRIST].x - lm[NOSE].x) < tol or abs(lm[L_WRIST].x - lm[L_EAR].x) < tol
+    near_y = abs(lm[L_WRIST].y - lm[NOSE].y) < tol or abs(lm[L_WRIST].y - lm[L_EAR].y) < tol
+    return near_x and near_y
 
 
 def check_right_hand_on_head(lm):
-    return (abs(lm[R_WRIST].x - lm[NOSE].x) < 0.12 or abs(lm[R_WRIST].x - lm[R_EAR].x) < 0.12) and (
-        abs(lm[R_WRIST].y - lm[NOSE].y) < 0.12 or abs(lm[R_WRIST].y - lm[R_EAR].y) < 0.12
-    )
+    bu = get_body_unit(lm)
+    tol = max(0.055, 0.50 * bu)
+    near_x = abs(lm[R_WRIST].x - lm[NOSE].x) < tol or abs(lm[R_WRIST].x - lm[R_EAR].x) < tol
+    near_y = abs(lm[R_WRIST].y - lm[NOSE].y) < tol or abs(lm[R_WRIST].y - lm[R_EAR].y) < tol
+    return near_x and near_y
 
 
 def check_left_bicep(lm):
-    return abs(lm[L_WRIST].x - lm[L_SHOULDER].x) < 0.10 and abs(
-        lm[L_WRIST].y - lm[L_SHOULDER].y
-    ) < 0.15 and lm[L_ELBOW].x < lm[L_SHOULDER].x - 0.05
+    bu = get_body_unit(lm)
+    return (
+        abs(lm[L_WRIST].x - lm[L_SHOULDER].x) < 0.45 * bu
+        and abs(lm[L_WRIST].y - lm[L_SHOULDER].y) < 0.62 * bu
+        and lm[L_ELBOW].x < lm[L_SHOULDER].x - 0.22 * bu
+        and lm[L_WRIST].y <= lm[L_ELBOW].y + 0.15 * bu
+    )
 
 
 def check_right_bicep(lm):
-    return abs(lm[R_WRIST].x - lm[R_SHOULDER].x) < 0.10 and abs(
-        lm[R_WRIST].y - lm[R_SHOULDER].y
-    ) < 0.15 and lm[R_ELBOW].x > lm[R_SHOULDER].x + 0.05
+    bu = get_body_unit(lm)
+    return (
+        abs(lm[R_WRIST].x - lm[R_SHOULDER].x) < 0.45 * bu
+        and abs(lm[R_WRIST].y - lm[R_SHOULDER].y) < 0.62 * bu
+        and lm[R_ELBOW].x > lm[R_SHOULDER].x + 0.22 * bu
+        and lm[R_WRIST].y <= lm[R_ELBOW].y + 0.15 * bu
+    )
 
 
 def check_right_salute(lm):
-    return abs(lm[R_WRIST].x - lm[R_EAR].x) < 0.12 and abs(lm[R_WRIST].y - lm[R_EAR].y) < 0.12
+    bu = get_body_unit(lm)
+    tol = max(0.055, 0.50 * bu)
+    return abs(lm[R_WRIST].x - lm[R_EAR].x) < tol and abs(lm[R_WRIST].y - lm[R_EAR].y) < tol
 
 
 def check_left_arm_y(lm):
-    return lm[L_WRIST].y < lm[NOSE].y and lm[L_WRIST].x < lm[L_SHOULDER].x - 0.10
+    bu = get_body_unit(lm)
+    return lm[L_WRIST].y < lm[NOSE].y - 0.05 * bu and lm[L_WRIST].x < lm[L_SHOULDER].x - 0.40 * bu
 
 
 def check_right_arm_y(lm):
-    return lm[R_WRIST].y < lm[NOSE].y and lm[R_WRIST].x > lm[R_SHOULDER].x + 0.10
+    bu = get_body_unit(lm)
+    return lm[R_WRIST].y < lm[NOSE].y - 0.05 * bu and lm[R_WRIST].x > lm[R_SHOULDER].x + 0.40 * bu
 
 
 def check_left_arm_o(lm):
-    return lm[L_WRIST].y < lm[NOSE].y - 0.05 and abs(lm[L_WRIST].x - lm[NOSE].x) < 0.12
+    bu = get_body_unit(lm)
+    return lm[L_WRIST].y < lm[NOSE].y - 0.15 * bu and abs(lm[L_WRIST].x - lm[NOSE].x) < 0.52 * bu
 
 
 def check_right_arm_o(lm):
-    return lm[R_WRIST].y < lm[NOSE].y - 0.05 and abs(lm[R_WRIST].x - lm[NOSE].x) < 0.12
+    bu = get_body_unit(lm)
+    return lm[R_WRIST].y < lm[NOSE].y - 0.15 * bu and abs(lm[R_WRIST].x - lm[NOSE].x) < 0.52 * bu
 
 
 def check_monkey_left(lm):
     bu = get_body_unit(lm)
-    near_shoulder = math.hypot(lm[L_WRIST].x - lm[L_SHOULDER].x, lm[L_WRIST].y - lm[L_SHOULDER].y) < 0.45 * bu
-    elbow_out = lm[L_ELBOW].x < lm[L_SHOULDER].x - 0.25 * bu
-    return near_shoulder and elbow_out
+    near_shoulder = math.hypot(lm[L_WRIST].x - lm[L_SHOULDER].x, lm[L_WRIST].y - lm[L_SHOULDER].y) < 0.72 * bu
+    elbow_out = lm[L_ELBOW].x < lm[L_SHOULDER].x - 0.24 * bu
+    wrist_above_hip = lm[L_WRIST].y < lm[L_HIP].y
+    return near_shoulder and elbow_out and wrist_above_hip
 
 
 def check_monkey_right(lm):
     bu = get_body_unit(lm)
-    near_shoulder = math.hypot(lm[R_WRIST].x - lm[R_SHOULDER].x, lm[R_WRIST].y - lm[R_SHOULDER].y) < 0.45 * bu
-    elbow_out = lm[R_ELBOW].x > lm[R_SHOULDER].x + 0.25 * bu
-    return near_shoulder and elbow_out
+    near_shoulder = math.hypot(lm[R_WRIST].x - lm[R_SHOULDER].x, lm[R_WRIST].y - lm[R_SHOULDER].y) < 0.72 * bu
+    elbow_out = lm[R_ELBOW].x > lm[R_SHOULDER].x + 0.24 * bu
+    wrist_above_hip = lm[R_WRIST].y < lm[R_HIP].y
+    return near_shoulder and elbow_out and wrist_above_hip
 
 
 def check_airplane_left(lm):
-    return check_left_arm_horizontal(lm) and (lm[L_SHOULDER].y - lm[R_SHOULDER].y > 0.04)
+    bu = get_body_unit(lm)
+    arm_out = abs(lm[L_WRIST].y - lm[L_SHOULDER].y) < 0.65 * bu and lm[L_WRIST].x < lm[L_SHOULDER].x - 0.42 * bu
+    torso_tilt = (lm[L_SHOULDER].y - lm[R_SHOULDER].y) > 0.12 * bu
+    return arm_out and torso_tilt
 
 
 def check_airplane_right(lm):
-    return check_right_arm_horizontal(lm) and (lm[L_SHOULDER].y - lm[R_SHOULDER].y > 0.04)
+    bu = get_body_unit(lm)
+    arm_out = abs(lm[R_WRIST].y - lm[R_SHOULDER].y) < 0.65 * bu and lm[R_WRIST].x > lm[R_SHOULDER].x + 0.42 * bu
+    torso_tilt = (lm[L_SHOULDER].y - lm[R_SHOULDER].y) > 0.12 * bu
+    return arm_out and torso_tilt
+
+
+def check_cross_arms_chest(lm):
+    """Pose de coreografía: brazos cruzados al pecho."""
+    bu = get_body_unit(lm)
+    tol = max(0.06, 0.55 * bu)
+    l_cross = abs(lm[L_WRIST].x - lm[R_SHOULDER].x) < tol and abs(lm[L_WRIST].y - lm[R_SHOULDER].y) < tol
+    r_cross = abs(lm[R_WRIST].x - lm[L_SHOULDER].x) < tol and abs(lm[R_WRIST].y - lm[L_SHOULDER].y) < tol
+    actually_crossed = lm[L_WRIST].x > lm[R_WRIST].x + 0.10 * bu
+    return l_cross and r_cross and actually_crossed
 
 
 # =====================================================================
@@ -116,12 +177,16 @@ def check_airplane_right(lm):
 # =====================================================================
 def check_contralateral_left_to_right(lm):
     """Mano izquierda toca oreja derecha (cruce de la línea media)."""
-    return abs(lm[L_WRIST].x - lm[R_EAR].x) < 0.14 and abs(lm[L_WRIST].y - lm[R_EAR].y) < 0.14
+    bu = get_body_unit(lm)
+    tol = max(0.055, 0.52 * bu)
+    return abs(lm[L_WRIST].x - lm[R_EAR].x) < tol and abs(lm[L_WRIST].y - lm[R_EAR].y) < tol
 
 
 def check_contralateral_right_to_left(lm):
     """Mano derecha toca oreja izquierda (cruce de la línea media)."""
-    return abs(lm[R_WRIST].x - lm[L_EAR].x) < 0.14 and abs(lm[R_WRIST].y - lm[L_EAR].y) < 0.14
+    bu = get_body_unit(lm)
+    tol = max(0.055, 0.52 * bu)
+    return abs(lm[R_WRIST].x - lm[L_EAR].x) < tol and abs(lm[R_WRIST].y - lm[L_EAR].y) < tol
 
 
 def check_namaste_center(lm):
@@ -129,8 +194,16 @@ def check_namaste_center(lm):
     bu = get_body_unit(lm)
     d_hands = math.hypot(lm[L_WRIST].x - lm[R_WRIST].x, lm[L_WRIST].y - lm[R_WRIST].y)
     mid_chest_y = (lm[L_SHOULDER].y + lm[L_HIP].y) * 0.50
+    mid_shoulder_x = (lm[L_SHOULDER].x + lm[R_SHOULDER].x) * 0.50
+    avg_wrist_x = (lm[L_WRIST].x + lm[R_WRIST].x) * 0.50
     avg_wrist_y = (lm[L_WRIST].y + lm[R_WRIST].y) * 0.50
-    return d_hands < 0.38 * bu and abs(avg_wrist_y - mid_chest_y) < 0.22 * bu
+    elbows_wide = lm[L_ELBOW].x < lm[L_WRIST].x + 0.05 * bu and lm[R_ELBOW].x > lm[R_WRIST].x - 0.05 * bu
+    return (
+        d_hands < 0.20 * bu
+        and abs(avg_wrist_y - mid_chest_y) < 0.28 * bu
+        and abs(avg_wrist_x - mid_shoulder_x) < 0.32 * bu
+        and elbows_wide
+    )
 
 
 def check_clock_arms_9_12(lm):
@@ -146,29 +219,36 @@ def check_clock_arms_12_3(lm):
 def check_egyptian_left_up_right_down(lm):
     """Brazo izquierdo flexionado 90° arriba y derecho flexionado 90° abajo."""
     bu = get_body_unit(lm)
-    l_up = lm[L_WRIST].y < lm[L_SHOULDER].y and abs(lm[L_ELBOW].x - lm[L_SHOULDER].x) > 0.15 * bu
-    r_down = lm[R_WRIST].y > lm[R_SHOULDER].y and abs(lm[R_ELBOW].x - lm[R_SHOULDER].x) > 0.15 * bu
+    l_up = (
+        lm[L_WRIST].y < lm[L_SHOULDER].y - 0.05 * bu
+        and abs(lm[L_ELBOW].x - lm[L_SHOULDER].x) > 0.28 * bu
+    )
+    r_down = (
+        lm[R_WRIST].y > lm[R_SHOULDER].y + 0.10 * bu
+        and abs(lm[R_ELBOW].x - lm[R_SHOULDER].x) > 0.28 * bu
+    )
     return l_up and r_down
 
 
 def check_gentle_sway(state, lm):
-    """Balanceo pendular rítmico suave de brazos/cuerpo sin impacto articular."""
+    """Balanceo pendular rítmico suave de brazos/cuerpo normalizado por BodyUnit."""
     events = []
-    hands_avg_x = (lm[L_WRIST].x + lm[R_WRIST].x) / 2.0
+    bu = get_body_unit(lm)
+    sway_x = (lm[L_SHOULDER].x + lm[R_SHOULDER].x + lm[L_WRIST].x + lm[R_WRIST].x) / 4.0
     if state.center_x is None:
-        state.center_x = hands_avg_x
+        state.center_x = sway_x
     else:
-        state.center_x = state.center_x * 0.96 + hands_avg_x * 0.04
-    threshold = 0.07
-    if hands_avg_x > state.center_x + threshold and state.last_hit_side != 'right':
+        state.center_x = state.center_x * 0.985 + sway_x * 0.015
+    threshold = max(0.020, 0.16 * bu)
+    if sway_x > state.center_x + threshold and state.last_hit_side != 'right':
         state.last_hit_side = 'right'
         state.arm_hits += 1
-        events.append({'type': 'hit', 'side': 'right', 'x': hands_avg_x, 'y': lm[R_WRIST].y})
-    elif hands_avg_x < state.center_x - threshold and state.last_hit_side != 'left':
+        events.append({'type': 'hit', 'side': 'right', 'x': sway_x, 'y': lm[R_WRIST].y})
+    elif sway_x < state.center_x - threshold and state.last_hit_side != 'left':
         state.last_hit_side = 'left'
         state.arm_hits += 1
-        events.append({'type': 'hit', 'side': 'left', 'x': hands_avg_x, 'y': lm[L_WRIST].y})
-    completed = state.arm_hits >= 6
+        events.append({'type': 'hit', 'side': 'left', 'x': sway_x, 'y': lm[L_WRIST].y})
+    completed = state.arm_hits >= 4
     return completed, events
 
 
@@ -177,13 +257,14 @@ def check_gentle_sway(state, lm):
 # =====================================================================
 def check_shake_hips(state, lm):
     events = []
+    bu = get_body_unit(lm)
     hip_x = (lm[L_HIP].x + lm[R_HIP].x) / 2.0
     hip_y = (lm[L_HIP].y + lm[R_HIP].y) / 2.0
     if state.center_x is None:
         state.center_x = hip_x
     else:
-        state.center_x = state.center_x * 0.98 + hip_x * 0.02
-    threshold = 0.025
+        state.center_x = state.center_x * 0.985 + hip_x * 0.015
+    threshold = max(0.015, 0.10 * bu)
     if hip_x > state.center_x + threshold and state.last_hit_side != 'right':
         state.last_hit_side = 'right'
         state.hip_hits += 1
@@ -198,13 +279,14 @@ def check_shake_hips(state, lm):
 
 def check_shake_head(state, lm):
     events = []
+    bu = get_body_unit(lm)
     nose_x = lm[NOSE].x
     nose_y = lm[NOSE].y
     if state.center_x is None:
         state.center_x = nose_x
     else:
-        state.center_x = state.center_x * 0.96 + nose_x * 0.04
-    threshold = 0.020
+        state.center_x = state.center_x * 0.975 + nose_x * 0.025
+    threshold = max(0.012, 0.08 * bu)
     if nose_x > state.center_x + threshold and state.last_hit_side != 'right':
         state.last_hit_side = 'right'
         state.hip_hits += 1
@@ -269,7 +351,7 @@ def check_spin(state, lm):
         elif lm[L_SHOULDER].visibility < 0.2 and lm[R_SHOULDER].visibility < 0.2:
             state.spin_phase = 1
     elif state.spin_phase == 1:
-        if time.time() - state.spin_start_time > 0.35:
+        if time.time() - state.spin_start_time > 0.70:
             if left_is_right_of_right == state.initial_shoulder_order and lm[L_SHOULDER].visibility > 0.4 and lm[R_SHOULDER].visibility > 0.4:
                 state.spin_phase = 2
                 events.append({'type': 'hit', 'side': 'center', 'x': lm[NOSE].x, 'y': lm[NOSE].y})
@@ -282,7 +364,6 @@ def check_flail_arms(state, lm):
     Detecta el movimiento dinamico de brazos con doble modalidad:
     1. Alternado armónico (un brazo arriba y el otro abajo en contrafase).
     2. Bombeo simétrico (ambos brazos arriba y abajo sincronizados).
-    Acumula impactos en ambas ejecuciones motrices naturales con debounce.
     """
     events = []
     bu = get_body_unit(lm)
@@ -295,8 +376,7 @@ def check_flail_arms(state, lm):
     now = time.time()
     min_interval = 0.10
 
-    # 1. Modo Alternado (Coach Vivo / Antifase): un brazo arriba y el otro abajo
-    if abs(diff_y) > 0.14 * bu:
+    if abs(diff_y) > 0.18 * bu:
         curr_alt = 'left_high' if diff_y < 0 else 'right_high'
         last_alt = getattr(state, 'last_alt_arm_pos', None)
         if last_alt is None:
@@ -309,7 +389,6 @@ def check_flail_arms(state, lm):
                 pt = lm[L_WRIST] if curr_alt == 'left_high' else lm[R_WRIST]
                 events.append({'type': 'hit', 'side': curr_alt, 'x': pt.x, 'y': pt.y})
 
-    # 2. Modo Simétrico (Bombeo Simultáneo): ambos brazos arriba y ambos abajo
     elif (l_arm_up and r_arm_up) or (l_arm_down and r_arm_down):
         curr_sym = 'both_up' if (l_arm_up and r_arm_up) else 'both_down'
         last_sym = getattr(state, 'last_sym_arm_pos', None)
@@ -362,15 +441,33 @@ def check_boxer_jabs(state, lm):
 
 
 def check_air_guitar(state, lm):
+    """
+    Guitarra Rock: Mano izquierda en el mástil (extendida hacia la izquierda)
+    y mano derecha rasgueando arriba/abajo alternadamente (evita auto-pase al bajar brazos).
+    """
     events = []
     bu = get_body_unit(lm)
+    l_neck = (
+        lm[L_WRIST].x < lm[L_SHOULDER].x - 0.22 * bu
+        and lm[L_WRIST].y < lm[L_HIP].y + 0.25 * bu
+    )
+    if not l_neck:
+        return False, events
+
     hand_y = lm[R_WRIST].y
     if state.last_arm_pos is None:
         state.last_arm_pos = hand_y
-    if abs(hand_y - state.last_arm_pos) > 0.15 * bu:
+        return False, events
+
+    delta = hand_y - state.last_arm_pos
+    if abs(delta) > 0.20 * bu:
+        curr_dir = 'down' if delta > 0 else 'up'
+        prev_dir = getattr(state, 'last_alt_arm_pos', None)
         state.last_arm_pos = hand_y
-        state.arm_hits += 1
-        events.append({'type': 'hit', 'side': 'strum', 'x': lm[R_WRIST].x, 'y': hand_y})
+        if prev_dir is None or curr_dir != prev_dir:
+            state.last_alt_arm_pos = curr_dir
+            state.arm_hits += 1
+            events.append({'type': 'hit', 'side': f'strum_{curr_dir}', 'x': lm[R_WRIST].x, 'y': hand_y})
     completed = state.arm_hits >= 6
     return completed, events
 
@@ -397,29 +494,45 @@ def check_spin_hand_head(state, lm):
 
 
 def check_gesture_next(lm):
-    l_cross = abs(lm[L_WRIST].x - lm[R_SHOULDER].x) < 0.15 and abs(lm[L_WRIST].y - lm[R_SHOULDER].y) < 0.15
-    r_cross = abs(lm[R_WRIST].x - lm[L_SHOULDER].x) < 0.15 and abs(lm[R_WRIST].y - lm[L_SHOULDER].y) < 0.15
-    return l_cross and r_cross
+    """
+    Gesto intencional de Saltar Pose (anti-falsos positivos):
+    El jugador debe estar de frente a la cámara y extender AMBAS manos
+    juntas hacia el lado derecho del cuerpo (empuje visual 'Siguiente ->').
+    Evita activaciones accidentales al cruzar brazos en pecho o descansar manos.
+    """
+    shoulder_span_x = abs(lm[R_SHOULDER].x - lm[L_SHOULDER].x)
+    if shoulder_span_x < 0.07:
+        return False
+    bu = get_body_unit(lm)
+    both_right = (
+        lm[L_WRIST].x > lm[R_SHOULDER].x + 0.12 * bu
+        and lm[R_WRIST].x > lm[R_SHOULDER].x + 0.35 * bu
+    )
+    chest_height = (
+        abs(lm[L_WRIST].y - lm[R_SHOULDER].y) < 0.70 * bu
+        and abs(lm[R_WRIST].y - lm[R_SHOULDER].y) < 0.70 * bu
+    )
+    return both_right and chest_height
 
 
 def check_continuous_groove(state, lm, current_time):
     """
     Motor de Groove Continuo:
     Evalua el ritmo de caderas durante cualquier momento del gameplay.
-    Premia al jugador con puntos continuos, combo y fever si no deja de bailar.
+    Normalizado por BodyUnit para detectar claramente el bamboleo en ninos y adultos.
     """
+    bu = get_body_unit(lm)
     hip_x = (lm[L_HIP].x + lm[R_HIP].x) / 2.0
     hip_y = (lm[L_HIP].y + lm[R_HIP].y) / 2.0
 
     if state.global_center_x is None:
         state.global_center_x = hip_x
     else:
-        state.global_center_x = state.global_center_x * 0.98 + hip_x * 0.02
+        state.global_center_x = state.global_center_x * 0.985 + hip_x * 0.015
 
-    threshold = 0.024
+    threshold = max(0.015, 0.10 * bu)
     min_interval = 0.18
 
-    # Reset de combo si el jugador deja de bailar por mas de 1.4 segundos
     if current_time - getattr(state, 'last_groove_time', 0) > 1.4:
         state.groove_combo = 0
 
@@ -445,49 +558,50 @@ def check_continuous_groove(state, lm, current_time):
 def check_dj_turntable(state, lm):
     """
     Pose Asimetrica de Baile: Remolino DJ!
-    Mano izquierda apoyada en cadera / cintura mientras la mano derecha
-    dibuja circulos continuos en el aire (scratch de vinilo DJ).
+    Mano izquierda baja / en cintura mientras la mano derecha dibuja
+    circulos continuos en el aire (tolera giros rapidos de 2 cuadrantes).
     """
     events = []
     bu = get_body_unit(lm)
 
-    # Mano izquierda cerca de cadera izquierda
-    l_on_hip = abs(lm[L_WRIST].x - lm[L_HIP].x) < 0.22 and abs(lm[L_WRIST].y - lm[L_HIP].y) < 0.22
+    l_on_hip = (
+        lm[L_WRIST].y > lm[L_SHOULDER].y + 0.30 * bu
+        and abs(lm[L_WRIST].x - lm[L_HIP].x) < 1.2 * bu
+    )
 
-    # Vector de muñeca derecha relativo al codo derecho
     dx = lm[R_WRIST].x - lm[R_ELBOW].x
     dy = lm[R_WRIST].y - lm[R_ELBOW].y
     dist = math.hypot(dx, dy)
 
-    if l_on_hip and dist > 0.06 * bu:
+    if l_on_hip and dist > 0.15 * bu:
         curr_quad = 0 if (dx >= 0 and dy <= 0) else (1 if (dx < 0 and dy <= 0) else (2 if (dx < 0 and dy > 0) else 3))
         if state.dj_quadrant is None:
             state.dj_quadrant = curr_quad
         elif curr_quad != state.dj_quadrant:
             diff = (curr_quad - state.dj_quadrant) % 4
-            if diff in (1, 3):  # Avance angular continuo
+            if diff in (1, 3):
                 state.dj_quadrant = curr_quad
                 state.dj_steps += 1
-                if state.dj_steps % 4 == 0:
-                    events.append({'type': 'hit', 'side': 'circle', 'x': lm[R_WRIST].x, 'y': lm[R_WRIST].y})
+            elif diff == 2:
+                state.dj_quadrant = curr_quad
+                state.dj_steps += 2
+            if state.dj_steps % 4 == 0:
+                events.append({'type': 'hit', 'side': 'circle', 'x': lm[R_WRIST].x, 'y': lm[R_WRIST].y})
 
-    completed = state.dj_steps >= 16  # 4 giros completos
+    completed = state.dj_steps >= 12  # 3 giros completos fluidos
     return completed, events
 
 
 def check_disco_point(state, lm):
     """
-    Pose Asimetrica de Baile: Fiebre de Sabado (Disco Point)!
-    Mano izquierda en cintura, mano derecha alternando entre diagonal alta
-    hacia el cielo y diagonal baja cruzando la cadera opuesta.
+    Pose Asimetrica de Baile: Fiebre Disco (simplificada e intuitiva para ninos)!
+    Brazo derecho apunta alto al cielo en diagonal y baja a cintura/cadera (4 hits).
     """
     events = []
     bu = get_body_unit(lm)
 
-    # Diagonal Alta (apuntando al cielo a la derecha)
-    is_high = (lm[R_WRIST].y < lm[NOSE].y) and (lm[R_WRIST].x > lm[R_SHOULDER].x)
-    # Diagonal Baja (cruzando hacia la cadera izquierda)
-    is_low = (lm[R_WRIST].y > lm[R_SHOULDER].y + 0.10 * bu) and (lm[R_WRIST].x < lm[NOSE].x + 0.06)
+    is_high = (lm[R_WRIST].y < lm[R_SHOULDER].y - 0.12 * bu) and (lm[R_WRIST].x > lm[R_SHOULDER].x - 0.10 * bu)
+    is_low = (lm[R_WRIST].y > lm[R_SHOULDER].y + 0.18 * bu)
 
     curr = 'high' if is_high else ('low' if is_low else None)
     if curr is not None:
@@ -499,20 +613,20 @@ def check_disco_point(state, lm):
             pt = lm[R_WRIST]
             events.append({'type': 'hit', 'side': curr, 'x': pt.x, 'y': pt.y})
 
-    completed = state.disco_hits >= 6
+    completed = state.disco_hits >= 4
     return completed, events
 
 
 def check_electro_wave(state, lm):
     """
     Pose Asimetrica de Baile: Onda Electro!
-    Brazo derecho extendido en guardia/bloqueo mientras el brazo izquierdo
-    bombea ondas ritmicas arriba y abajo al compas.
+    Brazo derecho en guardia lateral mientras el brazo izquierdo bombea arriba/abajo (4 hits).
     """
     events = []
-    r_guard = lm[R_WRIST].x > lm[R_SHOULDER].x + 0.05
-    is_up = lm[L_WRIST].y < lm[L_SHOULDER].y - 0.04
-    is_down = lm[L_WRIST].y > lm[L_SHOULDER].y + 0.04
+    bu = get_body_unit(lm)
+    r_guard = lm[R_WRIST].x > lm[R_SHOULDER].x + 0.15 * bu
+    is_up = lm[L_WRIST].y < lm[L_SHOULDER].y - 0.12 * bu
+    is_down = lm[L_WRIST].y > lm[L_SHOULDER].y + 0.12 * bu
 
     curr = 'wave_up' if is_up else ('wave_down' if is_down else None)
     if r_guard and curr is not None:
@@ -523,22 +637,28 @@ def check_electro_wave(state, lm):
             state.wave_hits += 1
             events.append({'type': 'hit', 'side': curr, 'x': lm[L_WRIST].x, 'y': lm[L_WRIST].y})
 
-    completed = state.wave_hits >= 6
+    completed = state.wave_hits >= 4
     return completed, events
 
 
 def check_windshield_wipers(state, lm):
     """
-    Pose Dinamica de Baile: Limpiaparabrisas Dance!
-    Ambos brazos en paralelo barriendo de izquierda a derecha en arco continuo.
+    Pose Dinamica de Baile: Limpiaparabrisas (Barrido de Brazos)!
+    Ambos brazos arriba/pecho barriendo juntos de izquierda a derecha en paralelo.
+    Normalizado por BodyUnit para responder perfectamente en ninos y adultos.
     """
     events = []
-    both_up = lm[L_WRIST].y < lm[L_SHOULDER].y + 0.12 and lm[R_WRIST].y < lm[R_SHOULDER].y + 0.12
+    bu = get_body_unit(lm)
+    both_up = (
+        lm[L_WRIST].y < lm[L_SHOULDER].y + 0.35 * bu
+        and lm[R_WRIST].y < lm[R_SHOULDER].y + 0.35 * bu
+    )
     hands_x = (lm[L_WRIST].x + lm[R_WRIST].x) / 2.0
-    nose_x = lm[NOSE].x
-    diff = hands_x - nose_x
+    torso_cx = (lm[L_SHOULDER].x + lm[R_SHOULDER].x) / 2.0
+    diff = hands_x - torso_cx
+    threshold = max(0.030, 0.24 * bu)
 
-    curr = 'wiper_right' if diff > 0.07 else ('wiper_left' if diff < -0.07 else None)
+    curr = 'wiper_right' if diff > threshold else ('wiper_left' if diff < -threshold else None)
     if both_up and curr is not None:
         if state.wiper_phase is None:
             state.wiper_phase = curr
@@ -547,5 +667,5 @@ def check_windshield_wipers(state, lm):
             state.wiper_hits += 1
             events.append({'type': 'hit', 'side': curr, 'x': hands_x, 'y': (lm[L_WRIST].y + lm[R_WRIST].y) / 2.0})
 
-    completed = state.wiper_hits >= 6
+    completed = state.wiper_hits >= 4
     return completed, events

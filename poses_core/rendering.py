@@ -217,10 +217,10 @@ def get_animated_ref_points(pose_data, t):
         phase = (t * 4.5) % (2.0 * math.pi)
         sin_p = math.sin(phase)
         is_air = sin_p > 0.0
-        jump_y = -sin_p * 0.16 if is_air else 0.0
+        jump_y = -sin_p * 0.09 if is_air else 0.0
 
         for k in list(pts.keys()):
-            pts[k] = (pts[k][0], pts[k][1] + jump_y)
+            pts[k] = (pts[k][0], max(0.04, pts[k][1] + 0.04 + jump_y))
 
         if is_air:
             la_y = floor_y + jump_y * 0.85
@@ -274,10 +274,14 @@ def get_animated_ref_points(pose_data, t):
     # 6. BALANCEO SUAVE FLOW (YOGA / MINDFULNESS FLOW)
     # =================================================================
     elif 'Flow' in name or 'Balanceo' in name:
-        flow = math.sin(t * 3.2) * 0.06
-        for k in ['nose', 'ls', 'rs', 'le', 're', 'lw', 'rw', 'lh', 'rh']:
+        flow = math.sin(t * 3.2) * 0.09
+        for k in ['nose', 'ls', 'rs', 'lh', 'rh']:
             if k in pts:
-                pts[k] = (pts[k][0] + flow, pts[k][1])
+                pts[k] = (pts[k][0] + flow * 0.7, pts[k][1])
+        pts['le'] = (0.26 + flow * 1.1, 0.36)
+        pts['re'] = (0.74 + flow * 1.1, 0.36)
+        pts['lw'] = (0.18 + flow * 1.4, 0.44 - abs(flow) * 0.5)
+        pts['rw'] = (0.82 + flow * 1.4, 0.44 - abs(flow) * 0.5)
         pts['lk'] = (pts['lh'][0] * 0.7 + la_x * 0.3, 0.75)
         pts['rk'] = (pts['rh'][0] * 0.7 + ra_x * 0.3, 0.75)
         pts['la'] = (la_x, floor_y)
@@ -285,20 +289,20 @@ def get_animated_ref_points(pose_data, t):
         return pts
 
     # =================================================================
-    # 7. BOXEO RÁPIDO (JABS ALTERNADOS IZQ / DER CON GUARDIA)
+    # 7. BOXEO RÁPIDO (JABS ALTERNADOS IZQ / DER CON GUARDIA LIMPIA)
     # =================================================================
     elif 'Boxeo' in name:
         jab = math.sin(t * 8.5)
         if jab > 0.1:
-            pts['lw'] = (0.46 + jab * 0.12, 0.22)
-            pts['le'] = (0.38, 0.28)
-            pts['rw'] = (0.64, 0.28)
-            pts['re'] = (0.72, 0.38)
+            pts['lw'] = (0.42 + jab * 0.04, 0.28)
+            pts['le'] = (0.30, 0.32)
+            pts['rw'] = (0.66, 0.34)
+            pts['re'] = (0.72, 0.42)
         elif jab < -0.1:
-            pts['rw'] = (0.54 - abs(jab) * 0.12, 0.22)
-            pts['re'] = (0.62, 0.28)
-            pts['lw'] = (0.36, 0.28)
-            pts['le'] = (0.28, 0.38)
+            pts['rw'] = (0.58 - abs(jab) * 0.04, 0.28)
+            pts['re'] = (0.70, 0.32)
+            pts['lw'] = (0.34, 0.34)
+            pts['le'] = (0.28, 0.42)
         pts['lk'] = (0.41, 0.75)
         pts['rk'] = (0.59, 0.75)
         pts['la'] = (la_x, floor_y)
@@ -357,8 +361,8 @@ def get_animated_ref_points(pose_data, t):
             pts['re'] = (0.76, 0.22)
             pts['rw'] = (0.88, 0.10)
         else:
-            pts['re'] = (0.60, 0.45)
-            pts['rw'] = (0.44, 0.62)
+            pts['re'] = (0.74, 0.45)
+            pts['rw'] = (0.64, 0.60)
         pts['lk'] = (0.41, 0.75)
         pts['rk'] = (0.59, 0.75)
         pts['la'] = (la_x, floor_y)
@@ -378,13 +382,13 @@ def get_animated_ref_points(pose_data, t):
         pts['ra'] = (ra_x, floor_y)
         return pts
     elif 'Limpiaparabrisas' in name:
-        w_sway = math.sin(t * 5.5) * 0.15
+        w_sway = math.sin(t * 5.0) * 0.09
         pts['ls'] = (0.36, 0.32)
         pts['rs'] = (0.64, 0.32)
-        pts['le'] = (0.30 + w_sway, 0.35)
-        pts['lw'] = (0.22 + w_sway, 0.18)
-        pts['re'] = (0.70 + w_sway, 0.35)
-        pts['rw'] = (0.62 + w_sway, 0.18)
+        pts['le'] = (0.26, 0.26)
+        pts['lw'] = (0.24 + w_sway, 0.14)
+        pts['re'] = (0.74, 0.26)
+        pts['rw'] = (0.76 + w_sway, 0.14)
         pts['lk'] = (0.41, 0.75)
         pts['rk'] = (0.59, 0.75)
         pts['la'] = (la_x, floor_y)
@@ -460,40 +464,43 @@ def draw_intent_arrows_in_box(frame, pose_data, box_x, box_y, box_w, box_h, t):
             cv2.arrowedLine(frame, (cx - 12, y_head), (cx - 38, y_head), (140, 255, 80), 2, tipLength=0.4)
 
     elif 'Salto' in name:
-        jump_pulse = int(math.sin(t * 4.5) * 8)
-        cv2.arrowedLine(frame, (box_x + 20, cy + 25 + jump_pulse), (box_x + 20, box_y + 15), (0, 255, 120), 3, tipLength=0.4)
-        cv2.arrowedLine(frame, (box_x + box_w - 20, cy + 25 + jump_pulse), (box_x + box_w - 20, box_y + 15), (0, 255, 120), 3, tipLength=0.4)
+        jump_pulse = int(math.sin(t * 4.5) * 6)
+        cv2.arrowedLine(frame, (box_x + 20, cy + 28 + jump_pulse), (box_x + 20, box_y + 32), (0, 255, 120), 3, tipLength=0.35)
+        cv2.arrowedLine(frame, (box_x + box_w - 20, cy + 28 + jump_pulse), (box_x + box_w - 20, box_y + 32), (0, 255, 120), 3, tipLength=0.35)
 
     elif 'Agacharse' in name:
         squat_pulse = int(abs(math.sin(t * 3.5)) * 10)
         cv2.arrowedLine(frame, (box_x + 20, box_y + 25), (box_x + 20, cy + 25 + squat_pulse), (100, 180, 255), 3, tipLength=0.4)
         cv2.arrowedLine(frame, (box_x + box_w - 20, box_y + 25), (box_x + box_w - 20, cy + 25 + squat_pulse), (100, 180, 255), 3, tipLength=0.4)
 
+    elif 'Flow' in name or 'Balanceo' in name:
+        y_fl = box_y + int(box_h * 0.44)
+        fl_val = math.sin(t * 3.2)
+        if fl_val >= 0:
+            cv2.arrowedLine(frame, (cx + 10, y_fl), (box_x + box_w - 14, y_fl), (140, 220, 255), 3, tipLength=0.35)
+        else:
+            cv2.arrowedLine(frame, (cx - 10, y_fl), (box_x + 14, y_fl), (140, 220, 255), 3, tipLength=0.35)
+
     elif 'Gir' in name:
-        cv2.ellipse(frame, (cx, cy + 15), (box_w // 3, 16), 0, -20, 240, (0, 215, 255), 3, cv2.LINE_AA)
-        cv2.putText(frame, "360", (cx - 20, box_y + box_h - 15), cv2.FONT_HERSHEY_DUPLEX, 0.60, (0, 215, 255), 1, cv2.LINE_AA)
+        cv2.ellipse(frame, (cx, cy + 12), (box_w // 3, 14), 0, -20, 240, (0, 215, 255), 3, cv2.LINE_AA)
+        cv2.putText(frame, "360", (cx - 18, cy + 36), cv2.FONT_HERSHEY_DUPLEX, 0.48, (0, 215, 255), 1, cv2.LINE_AA)
 
     elif 'Boxeo' in name:
         jab_v = math.sin(t * 8.5)
         y_jab = box_y + int(box_h * 0.28)
         if jab_v > 0.1:
-            cv2.arrowedLine(frame, (cx - 15, y_jab), (cx + 25, y_jab), (80, 130, 255), 2, tipLength=0.4)
+            cv2.arrowedLine(frame, (box_x + 20, y_jab), (box_x + 48, y_jab), (80, 130, 255), 2, tipLength=0.4)
         elif jab_v < -0.1:
-            cv2.arrowedLine(frame, (cx + 15, y_jab), (cx - 25, y_jab), (80, 130, 255), 2, tipLength=0.4)
+            cv2.arrowedLine(frame, (box_x + box_w - 20, y_jab), (box_x + box_w - 48, y_jab), (80, 130, 255), 2, tipLength=0.4)
 
     elif 'Mueve los Brazos' in name:
         arm_cycle = math.sin(t * 6.0)
-        arr_ly = int(cy - 12 - arm_cycle * 22)
-        arr_ry = int(cy - 12 + arm_cycle * 22)
         if arm_cycle > 0:
-            # Izquierda sube (verde arriba), Derecha baja (rosa abajo)
             cv2.arrowedLine(frame, (box_x + 18, cy + 20), (box_x + 18, cy - 24), (0, 255, 120), 2, tipLength=0.45)
             cv2.arrowedLine(frame, (box_x + box_w - 18, cy - 20), (box_x + box_w - 18, cy + 24), (255, 100, 220), 2, tipLength=0.45)
         else:
-            # Izquierda baja (rosa abajo), Derecha sube (verde arriba)
             cv2.arrowedLine(frame, (box_x + 18, cy - 20), (box_x + 18, cy + 24), (255, 100, 220), 2, tipLength=0.45)
             cv2.arrowedLine(frame, (box_x + box_w - 18, cy + 20), (box_x + box_w - 18, cy - 24), (0, 255, 120), 2, tipLength=0.45)
-        cv2.putText(frame, "BOMBEA BRAZOS", (cx - 44, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
 
     elif 'Remolino' in name or 'DJ' in name:
         cx_c = box_x + int(box_w * 0.76)
@@ -503,33 +510,33 @@ def draw_intent_arrows_in_box(frame, pose_data, box_x, box_y, box_w, box_h, t):
         ax = int(cx_c + 20 * math.cos(angle_arr))
         ay = int(cy_c + 20 * math.sin(angle_arr))
         cv2.circle(frame, (ax, ay), 5, (0, 255, 120), -1, cv2.LINE_AA)
-        cv2.putText(frame, "GIRA DJ", (cx - 25, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
 
     elif 'Disco' in name:
         d_val = math.sin(t * 5.0)
-        p1 = (box_x + int(box_w * 0.44), box_y + int(box_h * 0.65))
-        p2 = (box_x + int(box_w * 0.88), box_y + int(box_h * 0.14))
+        p1 = (box_x + int(box_w * 0.68), box_y + int(box_h * 0.60))
+        p2 = (box_x + int(box_w * 0.90), box_y + int(box_h * 0.14))
         if d_val > 0:
-            cv2.arrowedLine(frame, p1, p2, (255, 50, 220), 3, tipLength=0.3)
+            cv2.arrowedLine(frame, p1, p2, (255, 50, 220), 3, tipLength=0.35)
         else:
-            cv2.arrowedLine(frame, p2, p1, (0, 255, 255), 3, tipLength=0.3)
-        cv2.putText(frame, "PUNTO DISCO", (cx - 42, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+            cv2.arrowedLine(frame, p2, p1, (0, 255, 255), 3, tipLength=0.35)
 
     elif 'Onda' in name or 'Electro' in name:
-        cv2.arrowedLine(frame, (cx + 10, cy - 10), (box_x + box_w - 18, cy - 10), (255, 230, 0), 2, tipLength=0.3)
         w_p = math.sin(t * 6.5)
-        ly = int(cy - 10 + w_p * 18)
-        cv2.circle(frame, (box_x + 22, ly), 5, (0, 255, 200), -1, cv2.LINE_AA)
-        cv2.putText(frame, "OLA DE BRAZO", (cx - 42, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+        # Flecha vertical clara sobre el brazo izquierdo que ondula
+        if w_p <= 0:
+            cv2.arrowedLine(frame, (box_x + 20, cy + 16), (box_x + 20, cy - 26), (255, 230, 0), 3, tipLength=0.4)
+        else:
+            cv2.arrowedLine(frame, (box_x + 20, cy - 26), (box_x + 20, cy + 16), (0, 255, 200), 3, tipLength=0.4)
+        # Punto sutil de guardia fija derecha
+        cv2.circle(frame, (box_x + int(box_w * 0.90), box_y + int(box_h * 0.32)), 7, (0, 255, 120), 2, cv2.LINE_AA)
 
     elif 'Limpiaparabrisas' in name:
-        w_val = math.sin(t * 5.5)
-        arc_y = box_y + int(box_h * 0.22)
+        w_val = math.sin(t * 5.0)
+        arc_y = box_y + int(box_h * 0.06)
         if w_val > 0:
-            cv2.arrowedLine(frame, (cx - 26, arc_y), (cx + 36, arc_y), (0, 255, 150), 3, tipLength=0.4)
+            cv2.arrowedLine(frame, (cx - 28, arc_y), (cx + 36, arc_y), (0, 255, 150), 3, tipLength=0.38)
         else:
-            cv2.arrowedLine(frame, (cx + 26, arc_y), (cx - 36, arc_y), (0, 255, 150), 3, tipLength=0.4)
-        cv2.putText(frame, "BARRIDO DANCE", (cx - 46, box_y + box_h - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 255, 255), 1, cv2.LINE_AA)
+            cv2.arrowedLine(frame, (cx + 28, arc_y), (cx - 36, arc_y), (0, 255, 150), 3, tipLength=0.38)
 
 
 # =====================================================================

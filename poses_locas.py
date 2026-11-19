@@ -42,7 +42,7 @@ from poses_core import (
     check_shake_hips, check_shake_head, check_jump, check_squat,
     check_spin, check_flail_arms, check_move_side_to_side,
     check_boxer_jabs, check_air_guitar, check_hand_head_shake_hips,
-    check_jump_arms_up, check_spin_hand_head, check_gesture_next,
+    check_jump_arms_up, check_spin_hand_head, check_gesture_next, check_cross_arms_chest,
     check_continuous_groove,
     check_dj_turntable, check_disco_point, check_electro_wave, check_windshield_wipers,
     POSES, PROFILES, PROFILE_KEYS, COREOGRAFIAS, SONG_BPM,
@@ -65,7 +65,7 @@ RTSP_URL = os.environ.get("POSES_RTSP_URL", "")
 
 try:
     import pygame
-    pygame.mixer.pre_init(44100, -16, 1, 512)
+    pygame.mixer.pre_init(48000, -16, 2, 1024)
     pygame.init()
     snd_success = pygame.mixer.Sound('success_new.wav') if os.path.exists('success_new.wav') else None
     snd_fail = pygame.mixer.Sound('fail.wav') if os.path.exists('fail.wav') else None
@@ -183,7 +183,9 @@ def main():
     last_frame_time = time.time()
     pose_start_time = time.time()
     control_gesture_start = None
-    control_gesture_required = 0.8
+    control_gesture_required = 1.35
+    skip_lock_until_release = False
+    last_skip_time = -10.0
     queue_slide_offset = 0.0
 
     menu_left_start = None
@@ -261,16 +263,23 @@ def main():
                 if has_person:
                     lm = results.pose_landmarks.landmark
     
-                    # Gesto Saltar Pose (Wakanda X en pecho)
-                    if check_gesture_next(lm):
+                    # Gesto intencional Saltar Pose (2 manos a la derecha, anti-encadenamiento)
+                    gesture_held = check_gesture_next(lm)
+                    if not gesture_held:
+                        skip_lock_until_release = False
+                        control_gesture_start = None
+
+                    if gesture_held and not skip_lock_until_release and (current_time - last_skip_time >= 2.5):
                         if control_gesture_start is None:
                             control_gesture_start = current_time
-                        skip_prog = min(1.0, (current_time - control_gesture_start) / control_gesture_required)
-                        blend_rect_roi(frame, (display_w - 320) // 2, 80, 320, 40, (20, 20, 30), 0.85)
-                        draw_progress_bar(frame, (display_w - 300) // 2, 88, 300, 22, skip_prog, (0, 100, 255))
-                        cv2.putText(frame, "SALTANDO POSE...", ((display_w - 280) // 2, 82), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 150, 255), 2, cv2.LINE_AA)
+                        held_dur = current_time - control_gesture_start
+                        if held_dur >= 0.30:
+                            skip_prog = min(1.0, (held_dur - 0.30) / max(0.2, control_gesture_required - 0.30))
+                            blend_rect_roi(frame, (display_w - 320) // 2, 80, 320, 40, (20, 20, 30), 0.85)
+                            draw_progress_bar(frame, (display_w - 300) // 2, 88, 300, 22, skip_prog, (0, 100, 255))
+                            cv2.putText(frame, "SALTANDO POSE...", ((display_w - 280) // 2, 82), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (0, 150, 255), 2, cv2.LINE_AA)
     
-                        if current_time - control_gesture_start >= control_gesture_required:
+                        if held_dur >= control_gesture_required:
                             floating_texts.add("POSE SALTEADA!", 40, 310, (0, 100, 255), 1.3)
                             play_sound(snd_fail)
                             fever_gauge = max(0, fever_gauge - 20)
@@ -279,10 +288,13 @@ def main():
                             current_pose, coreo_idx = shift_queue(pose_queue, current_mode, current_song, coreo_idx, current_profile)
                             pose_start_time = current_time
                             control_gesture_start, hold_progress, streak = None, 0.0, 0
+                            skip_lock_until_release = True
+                            last_skip_time = current_time
                             queue_slide_offset = 240.0
                             state.reset()
                     else:
-                        control_gesture_start = None
+                        if not gesture_held:
+                            control_gesture_start = None
 
                         # --- GROOVE CONTINUO DE CADERAS (RITMO GLOBAL) ---
                         if 'Caderas' not in current_pose.get('name', ''):
@@ -536,7 +548,7 @@ def main():
                 if state.groove_combo >= 2:
                     cv2.putText(frame, f"GROOVE CADERAS x{state.groove_combo}", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 120, 240), 1, cv2.LINE_AA)
                 else:
-                    cv2.putText(frame, "Gesto X en pecho = Saltar", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (170, 185, 210), 1, cv2.LINE_AA)
+                    cv2.putText(frame, "2 Manos -> o Esp: Saltar", (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (170, 185, 210), 1, cv2.LINE_AA)
     
                 particles.update_and_draw(frame)
                 floating_texts.update_and_draw(frame)
@@ -791,10 +803,12 @@ def main():
                 in_calibration = True
                 calib_mgr.start()
 
-        if HAS_AUDIO and current_song and current_song != "Sin Musica" and not show_menu:
+        if HAS_AUDIO and current_song and current_song != "Sin Musica" and not show_menu and not in_calibration:
             if not pygame.mixer.music.get_busy():
                 try:
+                    pygame.mixer.music.load(current_song)
                     pygame.mixer.music.play(-1)
+                    pygame.mixer.music.set_volume(0.4)
                 except Exception:
                     pass
 

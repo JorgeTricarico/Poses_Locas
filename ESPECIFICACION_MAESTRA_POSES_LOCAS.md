@@ -203,3 +203,22 @@ flowchart LR
 * **Salto Rápido:** Presionando `ENTER` o la tecla `C`, el usuario puede saltar la calibración en cualquier momento y arrancar de inmediato con los parámetros seguros por defecto.
 * **Recalibración en Caliente:** Durante la partida, presionar la tecla `C` pausa la pista musical y reabre la calibración en tiempo real si otro jugador toma el turno.
 
+---
+
+## 9. AUDITORÍA DE MÉTRICAS INFANTILES, MÚSICA INFINITA Y ANTI-FALSOS POSITIVOS (V2.2)
+
+Basado en sesiones reales registradas con un jugador infantil en Raspberry Pi 5 (`metrics.csv`, n=301 eventos):
+
+1. **Música Verdaderamente Infinita en Modo Libre:**
+   * Se recortó la cola silenciosa de los WAV musicales (`asereje.wav` pasó de `405.2s` con `189.2s` de silencio muerto a `216.2s` de música continua; además de `ymca.wav`, `waka_waka.wav`, `danza_kuduro.wav` y `macarena.wav`).
+   * Inicialización nativa de mixer estéreo `48000 Hz` y bloqueo de watchdog fuera de la fase de calibración.
+2. **Erradicación de Saltos de Pose Accidentales (`check_gesture_next`):**
+   * Reemplazo de la X en el pecho (que disparaba saltos en cadena de `0.88s` cuando un niño cruzaba o juntaba manos frente al torso) por el gesto **"Doble Empuje a la Derecha"** (`2 Manos ->`) normalizado por `BodyUnit`, con guardia frontal (`shoulder_span_x >= 0.07`), `1.35s` de mantención, bloqueo hasta soltar (`skip_lock_until_release`) y cooldown de `2.5s`.
+3. **Normalización Pediátrica/Infantil por `BodyUnit` y Prevención de Auto-Pases:**
+   * Escalado dinámico por `BodyUnit` en poses estáticas, cognitivas y de ritmo (`Cruzado al Oido!`, `Namaste Zen!`, `Marco Egipcio!`, `Guitarra Rock!`, `Limpiaparabrisas!`, `Balanceo Suave Flow!`, `Onda Electro!`, `Fiebre Disco!`, `Remolino DJ!`).
+   * `Guitarra Rock!` exige mano izquierda en mástil y rasgueo alternado para evitar auto-pases de `0.59s` al bajar los brazos.
+4. **Rediseño Completo de Ilustraciones y Coach Vivo:**
+   * Regeneración total desde cero de [`pose_cabeza.jpg`](pose_cabeza.jpg) (un único personaje sonriente con brazos relajados y flechas en la cabeza) y [`pose_caderas.jpg`](pose_caderas.jpg) (ambos pies firmes en el suelo, manos en cintura y flechas bilaterales de cadera).
+   * Corrección visual del Coach Vivo en `Limpiaparabrisas!`, `Boxeo Rapido!`, `Balanceo Suave Flow!`, `Fiebre Disco!`, `Onda Electro!` y `Brazos Arriba!`.
+
+

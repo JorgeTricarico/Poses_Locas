@@ -56,15 +56,15 @@ def get_dynamic_progress(pose_name, state):
     elif 'Gir' in pose_name:
         return state.spin_phase, 2, "GIRA 360!" if state.spin_phase == 0 else "COMPLETA EL GIRO!"
     elif 'Balanceo' in pose_name:
-        return state.arm_hits, 6, f"FLOW: {state.arm_hits}/6"
+        return state.arm_hits, 4, f"FLOW: {state.arm_hits}/4"
     elif 'Remolino' in pose_name or 'DJ' in pose_name:
-        return state.dj_steps // 4, 4, f"GIROS DJ: {state.dj_steps // 4}/4"
+        return state.dj_steps // 4, 3, f"GIROS DJ: {state.dj_steps // 4}/3"
     elif 'Disco' in pose_name:
-        return state.disco_hits, 6, f"DISCO: {state.disco_hits}/6"
+        return state.disco_hits, 4, f"DISCO: {state.disco_hits}/4"
     elif 'Onda' in pose_name or 'Electro' in pose_name:
-        return state.wave_hits, 6, f"ONDAS: {state.wave_hits}/6"
+        return state.wave_hits, 4, f"ONDAS: {state.wave_hits}/4"
     elif 'Limpiaparabrisas' in pose_name:
-        return state.wiper_hits, 6, f"BARRIDOS: {state.wiper_hits}/6"
+        return state.wiper_hits, 4, f"BARRIDOS: {state.wiper_hits}/4"
     return 0, 1, ""
 
 

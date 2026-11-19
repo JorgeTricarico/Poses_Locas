@@ -18,7 +18,7 @@ from .detectors import (
     check_egyptian_left_up_right_down, check_gentle_sway,
     check_shake_hips, check_shake_head, check_jump, check_squat,
     check_spin, check_flail_arms, check_move_side_to_side,
-    check_boxer_jabs, check_air_guitar, check_gesture_next,
+    check_boxer_jabs, check_air_guitar, check_cross_arms_chest,
     check_dj_turntable, check_disco_point, check_electro_wave, check_windshield_wipers
 )
 
@@ -131,7 +131,7 @@ POSES = [
     {
         'name': 'Limpiaparabrisas!', 'color': (0, 255, 150),
         'dynamic': True, 'checks': check_windshield_wipers,
-        'ref': { NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.30, 0.35), R_ELBOW: (0.70, 0.35), L_WRIST: (0.24, 0.18), R_WRIST: (0.64, 0.18), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'ref': { NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.24), R_ELBOW: (0.72, 0.24), L_WRIST: (0.28, 0.10), R_WRIST: (0.72, 0.10), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
         'tags': ['flow', 'dance', 'fun']
     },
     
@@ -165,7 +165,7 @@ POSES = [
     {
         'name': 'Brazos Arriba!', 'color': (0, 255, 120), 'icon_name': 'pose_brazos',
         'checks': {'left_arm': check_left_arm_up, 'right_arm': check_right_arm_up},
-        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.18), R_ELBOW: (0.72, 0.18), L_WRIST: (0.32, 0.05), R_WRIST: (0.68, 0.05), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.36, 0.18), R_ELBOW: (0.64, 0.18), L_WRIST: (0.36, 0.04), R_WRIST: (0.64, 0.04), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
         'tags': ['junior', 'fun', 'zen', 'gentle']
     },
     {
@@ -285,7 +285,7 @@ COREOGRAFIAS = {
         {'name': 'Girando!', 'dynamic': True, 'checks': check_spin, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.46, 0.32), R_SHOULDER: (0.54, 0.32), L_ELBOW: (0.36, 0.46), R_ELBOW: (0.64, 0.46), L_WRIST: (0.32, 0.58), R_WRIST: (0.68, 0.58), L_HIP: (0.46, 0.62), R_HIP: (0.54, 0.62)}, 'color': (255, 160, 0)}
     ],
     'asereje.wav': [
-        {'name': 'Cruzando Abajo', 'checks': {'left_arm': lambda lm: check_gesture_next(lm), 'right_arm': lambda lm: check_gesture_next(lm)}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.45, 0.45), R_ELBOW: (0.55, 0.45), L_WRIST: (0.62, 0.32), R_WRIST: (0.38, 0.32), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)}, 'color': (255, 100, 255)}, 
+        {'name': 'Cruzando Abajo', 'checks': {'left_arm': check_cross_arms_chest, 'right_arm': check_cross_arms_chest}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.45, 0.45), R_ELBOW: (0.55, 0.45), L_WRIST: (0.62, 0.32), R_WRIST: (0.38, 0.32), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)}, 'color': (255, 100, 255)}, 
         {'name': 'Manos en la Cabeza!', 'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.25, 0.20), R_ELBOW: (0.75, 0.20), L_WRIST: (0.45, 0.12), R_WRIST: (0.55, 0.12), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)}, 'color': (100, 50, 255)},
         {'name': 'Baila! Mueve Caderas', 'dynamic': True, 'checks': check_shake_hips, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.38, 0.60), R_WRIST: (0.62, 0.60), L_HIP: (0.34, 0.62), R_HIP: (0.50, 0.62)}, 'color': (255, 100, 180)},
         {'name': 'Mueve los Brazos!', 'dynamic': True, 'checks': check_flail_arms, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.18), R_ELBOW: (0.74, 0.45), L_WRIST: (0.20, 0.05), R_WRIST: (0.80, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)}, 'color': (255, 50, 255)},
