@@ -13,7 +13,7 @@ import numpy as np
 import cv2
 import os
 
-from poses_core.catalog import POSES
+from poses_core.catalog import POSES, COREOGRAFIAS
 from poses_core.rendering import (
     get_animated_ref_points, draw_full_body_stickman,
     draw_intent_arrows_in_box, load_pose_illustration_clean,
@@ -185,6 +185,37 @@ def generate_all_23_poses_grid():
     print(f"      -> Lámina '{out_path}' generada con éxito.")
 
 
+def generate_choreographies_grid():
+    """Genera un mosaico con TODOS los pasos de las coreografias (Macarena, Asereje, YMCA, Despacito)."""
+    items = []
+    for song in ('macarena.wav', 'asereje.wav', 'ymca.wav', 'despacito.wav'):
+        for idx, p in enumerate(COREOGRAFIAS.get(song, [])):
+            items.append((song.replace('.wav', '').upper(), idx + 1, p))
+
+    cols = 4
+    rows = math.ceil(len(items) / cols)
+    card_w, card_h = 320, 220
+    grid_w, grid_h = cols * card_w, rows * card_h + 70
+    grid = np.full((grid_h, grid_w, 3), (16, 14, 24), dtype=np.uint8)
+    cv2.putText(grid, "AUDITORIA DE COREOGRAFIAS (MACARENA / ASEREJE / YMCA / DESPACITO)",
+                (grid_w // 2 - 440, 44), cv2.FONT_HERSHEY_DUPLEX, 0.72, (0, 255, 255), 2, cv2.LINE_AA)
+
+    for idx, (song_lbl, step_n, p) in enumerate(items):
+        r, c = idx // cols, idx % cols
+        bx, by, bw, bh = c * card_w + 10, 70 + r * card_h + 8, card_w - 20, card_h - 16
+        p_col = p.get('color', (255, 200, 0))
+        blend_rect_roi(grid, bx, by, bw, bh, (28, 26, 38), 0.90)
+        cv2.rectangle(grid, (bx, by), (bx + bw, by + bh), p_col, 2)
+        cv2.putText(grid, f"[{song_lbl} #{step_n}] {p['name']}", (bx + 10, by + 24), cv2.FONT_HERSHEY_DUPLEX, 0.46, p_col, 1, cv2.LINE_AA)
+        pts = get_animated_ref_points(p, 0.35)
+        draw_full_body_stickman(grid, bx + 55, by + 32, bw - 110, bh - 44, pts, p_col, show_floor=True)
+        draw_intent_arrows_in_box(grid, p, bx + 55, by + 32, bw - 110, bh - 44, 0.35)
+
+    out_path = "test_visual_choreographies_grid.jpg"
+    cv2.imwrite(out_path, grid, [cv2.IMWRITE_JPEG_QUALITY, 92])
+    print(f"      -> Lámina '{out_path}' generada con éxito.")
+
+
 def run_all_illustration_tests():
     print("==================================================")
     print("   TEST Y AUDITORÍA DE ILUSTRACIONES Y MOVIMIENTO ")
@@ -192,6 +223,7 @@ def run_all_illustration_tests():
     test_hip_sway_biomechanics_and_symmetry()
     generate_hip_sway_strip()
     generate_all_23_poses_grid()
+    generate_choreographies_grid()
     print("==================================================")
     print("   TODAS LAS ILUSTRACIONES Y MOVIMIENTOS OK!      ")
     print("==================================================")

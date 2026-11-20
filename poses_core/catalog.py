@@ -151,7 +151,7 @@ POSES = [
     {
         'name': 'Namaste Zen!', 'color': (120, 255, 150),
         'checks': {'left_arm': check_namaste_center, 'right_arm': check_namaste_center},
-        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.25, 0.45), R_ELBOW: (0.75, 0.45), L_WRIST: (0.47, 0.45), R_WRIST: (0.53, 0.45), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
+        'ref': { NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.25, 0.45), R_ELBOW: (0.75, 0.45), L_WRIST: (0.48, 0.45), R_WRIST: (0.52, 0.45), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62) },
         'tags': ['cognitive', 'zen', 'gentle']
     },
     {
@@ -216,25 +216,28 @@ POSES = [
 # PERFILES DE EXPERIENCIA
 # =====================================================================
 PROFILES = {
+    'JUNIOR': {
+        'id': 'JUNIOR',
+        'short': 'NINOS',
+        'name': 'NINOS (JUNIOR)',
+        'subtitle': 'Ideal Chicos: Facil, Ludico y Divertido',
+        'time': 7.5,
+        'grace_mult': 1.3,
+        'tags': {'junior', 'fun', 'basic'}
+    },
     'FLOW': {
         'id': 'FLOW',
+        'short': 'FLOW',
         'name': 'FREESTYLE FLOW',
         'subtitle': '100% Baile Dinamico y Asimetrico (Sin Poses Estaticas)',
         'time': 5.5,
         'grace_mult': 1.0,
         'tags': {'flow'}
     },
-    'JUNIOR': {
-        'id': 'JUNIOR',
-        'name': 'AVENTURA JUNIOR',
-        'subtitle': 'Ludico, Expresivo y Divertido',
-        'time': 7.5,
-        'grace_mult': 1.3,
-        'tags': {'junior', 'fun', 'basic'}
-    },
     'CARDIO': {
         'id': 'CARDIO',
-        'name': 'CARDIO GROOVE',
+        'short': 'ADULTOS',
+        'name': 'ADULTOS CARDIO',
         'subtitle': 'Intenso, Ritmico y Dinamico',
         'time': 5.0,
         'grace_mult': 0.85,
@@ -242,22 +245,24 @@ PROFILES = {
     },
     'ZEN': {
         'id': 'ZEN',
-        'name': 'MENTE ACTIVA & ZEN',
-        'subtitle': 'Bajo Impacto Articular, Alto Reto Cognitivo',
+        'short': 'SUAVE',
+        'name': 'SUAVE & ZEN',
+        'subtitle': 'Bajo Impacto Articular, Movilidad y Coordinacion',
         'time': 8.5,
         'grace_mult': 1.5,
         'tags': {'cognitive', 'zen', 'gentle'}
     },
     'FIESTA': {
         'id': 'FIESTA',
+        'short': 'TODOS',
         'name': 'FIESTA TOTAL',
-        'subtitle': 'Todas las Poses y Desafios Combinados',
+        'subtitle': 'Toda la Familia: Poses y Desafios Combinados',
         'time': 6.0,
         'grace_mult': 1.0,
         'tags': {'all'}
     }
 }
-PROFILE_KEYS = ['FLOW', 'JUNIOR', 'CARDIO', 'ZEN', 'FIESTA']
+PROFILE_KEYS = ['JUNIOR', 'FLOW', 'CARDIO', 'ZEN', 'FIESTA']
 
 
 def get_poses_for_profile(profile_key):
@@ -275,34 +280,144 @@ def get_poses_for_profile(profile_key):
 # =====================================================================
 COREOGRAFIAS = {
     'macarena.wav': [
-        {'name': 'Brazo Der Adelante', 'checks': {'left_arm': check_left_arm_down, 'right_arm': check_right_arm_horizontal}, 'ref': {NOSE: (0.5, 0.14), R_SHOULDER: (0.62, 0.32), R_ELBOW: (0.8, 0.32), R_WRIST: (0.95, 0.32)}, 'color': (255, 200, 0)},
-        {'name': 'Brazos Adelante', 'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_horizontal}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), L_ELBOW: (0.2, 0.32), L_WRIST: (0.05, 0.32), R_SHOULDER: (0.62, 0.32), R_ELBOW: (0.8, 0.32), R_WRIST: (0.95, 0.32)}, 'color': (255, 200, 0)},
-        {'name': 'Mano Der Cabeza', 'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_hand_on_head}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), L_WRIST: (0.05, 0.32), R_SHOULDER: (0.62, 0.32), R_WRIST: (0.55, 0.14)}, 'color': (255, 200, 0)},
-        {'name': 'Manos en la Cabeza!', 'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), L_WRIST: (0.45, 0.14), R_SHOULDER: (0.62, 0.32), R_WRIST: (0.55, 0.14)}, 'color': (255, 200, 0)},
-        {'name': 'Mano Der Cintura', 'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_hip}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.45, 0.14), R_SHOULDER: (0.62, 0.32), R_WRIST: (0.58, 0.62), R_HIP: (0.58, 0.62)}, 'color': (255, 200, 0)},
-        {'name': 'Manos Cintura!', 'checks': {'left_arm': check_left_hand_on_hip, 'right_arm': check_right_hand_on_hip}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), L_WRIST: (0.42, 0.62), L_HIP: (0.42, 0.62), R_SHOULDER: (0.62, 0.32), R_WRIST: (0.58, 0.62), R_HIP: (0.58, 0.62)}, 'color': (255, 200, 0)},
-        {'name': 'Baila! Mueve Caderas', 'dynamic': True, 'checks': check_shake_hips, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.38, 0.60), R_WRIST: (0.62, 0.60), L_HIP: (0.34, 0.62), R_HIP: (0.50, 0.62)}, 'color': (255, 100, 180)},
-        {'name': 'Girando!', 'dynamic': True, 'checks': check_spin, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.46, 0.32), R_SHOULDER: (0.54, 0.32), L_ELBOW: (0.36, 0.46), R_ELBOW: (0.64, 0.46), L_WRIST: (0.32, 0.58), R_WRIST: (0.68, 0.58), L_HIP: (0.46, 0.62), R_HIP: (0.54, 0.62)}, 'color': (255, 160, 0)}
+        {
+            'name': 'Brazo Der Adelante',
+            'checks': {'left_arm': check_left_arm_down, 'right_arm': check_right_arm_horizontal},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.32, 0.45), R_ELBOW: (0.80, 0.32), L_WRIST: (0.32, 0.58), R_WRIST: (0.94, 0.32), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 200, 0)
+        },
+        {
+            'name': 'Brazos Adelante',
+            'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_horizontal},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.20, 0.32), R_ELBOW: (0.80, 0.32), L_WRIST: (0.06, 0.32), R_WRIST: (0.94, 0.32), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 200, 0)
+        },
+        {
+            'name': 'Mano Der Cabeza',
+            'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_hand_on_head},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.20, 0.32), R_ELBOW: (0.75, 0.22), L_WRIST: (0.06, 0.32), R_WRIST: (0.55, 0.14), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 200, 0)
+        },
+        {
+            'name': 'Manos en la Cabeza!',
+            'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.25, 0.22), R_ELBOW: (0.75, 0.22), L_WRIST: (0.45, 0.14), R_WRIST: (0.55, 0.14), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 200, 0)
+        },
+        {
+            'name': 'Mano Der Cintura',
+            'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_hip},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.25, 0.22), R_ELBOW: (0.74, 0.45), L_WRIST: (0.45, 0.14), R_WRIST: (0.60, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 200, 0)
+        },
+        {
+            'name': 'Manos Cintura!',
+            'checks': {'left_arm': check_left_hand_on_hip, 'right_arm': check_right_hand_on_hip},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.45), R_ELBOW: (0.74, 0.45), L_WRIST: (0.40, 0.60), R_WRIST: (0.60, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 200, 0)
+        },
+        {
+            'name': 'Baila! Mueve Caderas', 'icon_name': 'pose_caderas',
+            'dynamic': True, 'checks': check_shake_hips,
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.36, 0.58), R_WRIST: (0.64, 0.58), L_HIP: (0.42, 0.60), R_HIP: (0.58, 0.60)},
+            'color': (255, 100, 180)
+        },
+        {
+            'name': 'Girando!',
+            'dynamic': True, 'checks': check_spin,
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.46, 0.32), R_SHOULDER: (0.54, 0.32), L_ELBOW: (0.36, 0.46), R_ELBOW: (0.64, 0.46), L_WRIST: (0.32, 0.58), R_WRIST: (0.68, 0.58), L_HIP: (0.46, 0.62), R_HIP: (0.54, 0.62)},
+            'color': (255, 160, 0)
+        }
     ],
     'asereje.wav': [
-        {'name': 'Cruzando Abajo', 'checks': {'left_arm': check_cross_arms_chest, 'right_arm': check_cross_arms_chest}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.45, 0.45), R_ELBOW: (0.55, 0.45), L_WRIST: (0.62, 0.32), R_WRIST: (0.38, 0.32), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)}, 'color': (255, 100, 255)}, 
-        {'name': 'Manos en la Cabeza!', 'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.25, 0.20), R_ELBOW: (0.75, 0.20), L_WRIST: (0.45, 0.12), R_WRIST: (0.55, 0.12), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)}, 'color': (100, 50, 255)},
-        {'name': 'Baila! Mueve Caderas', 'dynamic': True, 'checks': check_shake_hips, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.38, 0.60), R_WRIST: (0.62, 0.60), L_HIP: (0.34, 0.62), R_HIP: (0.50, 0.62)}, 'color': (255, 100, 180)},
-        {'name': 'Mueve los Brazos!', 'dynamic': True, 'checks': check_flail_arms, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.18), R_ELBOW: (0.74, 0.45), L_WRIST: (0.20, 0.05), R_WRIST: (0.80, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)}, 'color': (255, 50, 255)},
+        {
+            'name': 'Cruzando Abajo',
+            'checks': {'left_arm': check_cross_arms_chest, 'right_arm': check_cross_arms_chest},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.44, 0.44), R_ELBOW: (0.56, 0.44), L_WRIST: (0.62, 0.34), R_WRIST: (0.38, 0.34), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 100, 255)
+        },
+        {
+            'name': 'Manos en la Cabeza!',
+            'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.25, 0.22), R_ELBOW: (0.75, 0.22), L_WRIST: (0.45, 0.14), R_WRIST: (0.55, 0.14), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (100, 50, 255)
+        },
+        {
+            'name': 'Baila! Mueve Caderas', 'icon_name': 'pose_caderas',
+            'dynamic': True, 'checks': check_shake_hips,
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.44), R_ELBOW: (0.74, 0.44), L_WRIST: (0.36, 0.58), R_WRIST: (0.64, 0.58), L_HIP: (0.42, 0.60), R_HIP: (0.58, 0.60)},
+            'color': (255, 100, 180)
+        },
+        {
+            'name': 'Mueve los Brazos!',
+            'dynamic': True, 'checks': check_flail_arms,
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.18), R_ELBOW: (0.74, 0.45), L_WRIST: (0.20, 0.05), R_WRIST: (0.80, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 50, 255)
+        },
     ],
     'ymca.wav': [
-        {'name': 'Letra Y!', 'checks': {'left_arm': check_left_arm_y, 'right_arm': check_right_arm_y}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.26, 0.18), R_ELBOW: (0.74, 0.18), L_WRIST: (0.16, 0.05), R_WRIST: (0.84, 0.05)}, 'color': (255, 100, 100)},
-        {'name': 'Letra M!', 'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.25, 0.20), R_ELBOW: (0.75, 0.20), L_WRIST: (0.45, 0.12), R_WRIST: (0.55, 0.12)}, 'color': (100, 255, 100)},
-        {'name': 'Letra C!', 'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_up}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.30, 0.45), R_ELBOW: (0.70, 0.15), L_WRIST: (0.25, 0.60), R_WRIST: (0.75, 0.05)}, 'color': (100, 100, 255)},
-        {'name': 'Letra A!', 'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head}, 'ref': {NOSE: (0.5, 0.14), L_SHOULDER: (0.38, 0.32), R_SHOULDER: (0.62, 0.32), L_ELBOW: (0.38, 0.08), R_ELBOW: (0.62, 0.08), L_WRIST: (0.48, 0.02), R_WRIST: (0.52, 0.02)}, 'color': (255, 255, 100)},
+        {
+            'name': 'Letra Y!', 'icon_name': 'pose_letra_y',
+            'checks': {'left_arm': check_left_arm_y, 'right_arm': check_right_arm_y},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.26, 0.18), R_ELBOW: (0.74, 0.18), L_WRIST: (0.16, 0.05), R_WRIST: (0.84, 0.05), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 100, 100)
+        },
+        {
+            'name': 'Letra M!',
+            'checks': {'left_arm': check_left_hand_on_head, 'right_arm': check_right_hand_on_head},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.25, 0.22), R_ELBOW: (0.75, 0.22), L_WRIST: (0.45, 0.14), R_WRIST: (0.55, 0.14), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (100, 255, 100)
+        },
+        {
+            'name': 'Letra C!',
+            'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_up},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.32), R_ELBOW: (0.74, 0.18), L_WRIST: (0.10, 0.32), R_WRIST: (0.60, 0.05), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (100, 100, 255)
+        },
+        {
+            'name': 'Letra A!', 'icon_name': 'pose_letra_o',
+            'checks': {'left_arm': check_left_arm_o, 'right_arm': check_right_arm_o},
+            'ref': {NOSE: (0.50, 0.20), L_SHOULDER: (0.36, 0.36), R_SHOULDER: (0.64, 0.36), L_ELBOW: (0.30, 0.14), R_ELBOW: (0.70, 0.14), L_WRIST: (0.45, 0.04), R_WRIST: (0.55, 0.04), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 255, 100)
+        },
     ],
     'despacito.wav': [
-        {'name': 'Namaste Zen!', 'checks': {'left_arm': check_namaste_center, 'right_arm': check_namaste_center}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.47, 0.45), R_WRIST: (0.53, 0.45), L_ELBOW: (0.25, 0.45), R_ELBOW: (0.75, 0.45)}, 'color': (120, 255, 150)},
-        {'name': 'Cruzado al Oido!', 'checks': {'left_arm': check_contralateral_left_to_right, 'right_arm': check_right_arm_down}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.56, 0.17), R_WRIST: (0.65, 0.60)}, 'color': (255, 120, 180)},
-        {'name': 'Balanceo Suave Flow!', 'dynamic': True, 'checks': check_gentle_sway, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.35, 0.45), R_WRIST: (0.65, 0.45)}, 'color': (140, 220, 255)},
-        {'name': 'Reloj 9 y 12!', 'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_up}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.08, 0.32), R_WRIST: (0.68, 0.05)}, 'color': (0, 240, 255)},
-        {'name': 'Marco Egipcio!', 'checks': {'left_arm': check_egyptian_left_up_right_down, 'right_arm': check_egyptian_left_up_right_down}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.35, 0.18), L_ELBOW: (0.22, 0.32), R_WRIST: (0.65, 0.55), R_ELBOW: (0.78, 0.42)}, 'color': (255, 200, 50)},
-        {'name': 'T-Pose!', 'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_horizontal}, 'ref': {NOSE: (0.5, 0.14), L_WRIST: (0.08, 0.32), R_WRIST: (0.92, 0.32)}, 'color': (255, 210, 0)}
+        {
+            'name': 'Namaste Zen!',
+            'checks': {'left_arm': check_namaste_center, 'right_arm': check_namaste_center},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.25, 0.45), R_ELBOW: (0.75, 0.45), L_WRIST: (0.48, 0.45), R_WRIST: (0.52, 0.45), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (120, 255, 150)
+        },
+        {
+            'name': 'Cruzado al Oido!',
+            'checks': {'left_arm': check_contralateral_left_to_right, 'right_arm': check_right_arm_down},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.45, 0.22), R_ELBOW: (0.70, 0.45), L_WRIST: (0.56, 0.17), R_WRIST: (0.65, 0.60), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 120, 180)
+        },
+        {
+            'name': 'Balanceo Suave Flow!',
+            'dynamic': True, 'checks': check_gentle_sway,
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.28, 0.38), R_ELBOW: (0.72, 0.38), L_WRIST: (0.35, 0.45), R_WRIST: (0.65, 0.45), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (140, 220, 255)
+        },
+        {
+            'name': 'Reloj 9 y 12!',
+            'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_up},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.32), R_ELBOW: (0.72, 0.18), L_WRIST: (0.08, 0.32), R_WRIST: (0.68, 0.05), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (0, 240, 255)
+        },
+        {
+            'name': 'Marco Egipcio!',
+            'checks': {'left_arm': check_egyptian_left_up_right_down, 'right_arm': check_egyptian_left_up_right_down},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.32), R_ELBOW: (0.78, 0.42), L_WRIST: (0.35, 0.18), R_WRIST: (0.65, 0.55), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 200, 50)
+        },
+        {
+            'name': 'T-Pose!', 'icon_name': 'pose_tpose',
+            'checks': {'left_arm': check_left_arm_horizontal, 'right_arm': check_right_arm_horizontal},
+            'ref': {NOSE: (0.50, 0.14), L_SHOULDER: (0.36, 0.32), R_SHOULDER: (0.64, 0.32), L_ELBOW: (0.22, 0.32), R_ELBOW: (0.78, 0.32), L_WRIST: (0.08, 0.32), R_WRIST: (0.92, 0.32), L_HIP: (0.42, 0.62), R_HIP: (0.58, 0.62)},
+            'color': (255, 210, 0)
+        }
     ]
 }
 COREOGRAFIAS['macarena_real.wav'] = COREOGRAFIAS['macarena.wav']

@@ -192,6 +192,20 @@ def main():
     menu_right_start = None
     menu_both_start = None
     menu_confirm_required = 0.9
+    menu_profile_arm_start = None
+    menu_profile_lock = False
+    menu_profile_required = 0.65
+
+    # Geometría interactiva de botones de nivel y lista para mouse/táctil
+    pill_boxes = []
+    song_boxes = []
+    mouse_state = {'click': None}
+
+    def on_mouse(event, x, y, flags, param):
+        if event == cv2.EVENT_LBUTTONDOWN:
+            mouse_state['click'] = (x, y)
+
+    cv2.setMouseCallback(WINDOW_NAME, on_mouse)
 
     particles = ParticleSystem()
     floating_texts = FloatingText()
@@ -601,30 +615,58 @@ def main():
         # =========================================================
         if show_menu:
             blend_rect_roi(frame, 0, 0, display_w, display_h, (12, 10, 18), 0.82)
-            cv2.putText(frame, "MENU DE CANCIONES Y COREOGRAFIAS", (display_w//2 - 380, 85), cv2.FONT_HERSHEY_DUPLEX, 1.3, (0, 255, 255), 2, cv2.LINE_AA)
-            cv2.putText(frame, "Controla con tus manos a distancia o con flechas del teclado", (display_w//2 - 350, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (200, 220, 240), 1, cv2.LINE_AA)
+            t_menu = "MENU DE CANCIONES Y NIVELES"
+            (tw_m, _), _ = cv2.getTextSize(t_menu, cv2.FONT_HERSHEY_DUPLEX, 1.25, 2)
+            cv2.putText(frame, t_menu, ((display_w - tw_m) // 2, 56), cv2.FONT_HERSHEY_DUPLEX, 1.25, (0, 255, 255), 2, cv2.LINE_AA)
+            sub_m = "Elige tu NIVEL (Ninos / Flow / Adultos / Suave / Todos) y cancion"
+            (sw_m, _), _ = cv2.getTextSize(sub_m, cv2.FONT_HERSHEY_SIMPLEX, 0.60, 1)
+            cv2.putText(frame, sub_m, ((display_w - sw_m) // 2, 88), cv2.FONT_HERSHEY_SIMPLEX, 0.60, (200, 220, 240), 1, cv2.LINE_AA)
 
-            # Selector de Perfil de Experiencia
+            # Selector Visual de 5 Niveles / Perfiles (Click, Teclas 1-5/P o Brazo Der Horizontal)
+            prof_colors = {
+                'JUNIOR': (0, 215, 255),
+                'FLOW': (255, 60, 255),
+                'CARDIO': (255, 100, 200),
+                'ZEN': (0, 255, 120),
+                'FIESTA': (0, 255, 255),
+            }
+            pill_boxes = []
+            pill_w, pill_h, gap = 192, 44, 10
+            total_pw = len(PROFILE_KEYS) * pill_w + (len(PROFILE_KEYS) - 1) * gap
+            start_px = (display_w - total_pw) // 2
+            for idx_p, pk in enumerate(PROFILE_KEYS):
+                p_info = PROFILES[pk]
+                px = start_px + idx_p * (pill_w + gap)
+                py = 108
+                pill_boxes.append((idx_p, px, py, px + pill_w, py + pill_h))
+                p_col = prof_colors.get(pk, (0, 255, 255))
+                is_act = (pk == current_profile)
+                blend_rect_roi(frame, px, py, pill_w, pill_h, (38, 42, 65) if is_act else (18, 20, 32), 0.94 if is_act else 0.80)
+                cv2.rectangle(frame, (px, py), (px + pill_w, py + pill_h), p_col if is_act else (85, 90, 110), 3 if is_act else 1)
+                lbl_p = f"[{idx_p + 1}] {p_info.get('short', pk)}"
+                (lw_p, _), _ = cv2.getTextSize(lbl_p, cv2.FONT_HERSHEY_DUPLEX, 0.56, 2 if is_act else 1)
+                cv2.putText(frame, lbl_p, (px + (pill_w - lw_p) // 2, py + 29), cv2.FONT_HERSHEY_DUPLEX, 0.56, p_col if is_act else (185, 195, 210), 2 if is_act else 1, cv2.LINE_AA)
+
             prof = PROFILES[current_profile]
-            p_color = (255, 60, 255) if current_profile == 'FLOW' else (
-                (0, 255, 120) if current_profile == 'ZEN' else (
-                    (0, 215, 255) if current_profile == 'JUNIOR' else (
-                        (255, 100, 200) if current_profile == 'CARDIO' else (255, 215, 0)
-                    )
-                )
-            )
-            blend_rect_roi(frame, display_w//2 - 360, 138, 720, 52, (20, 22, 38), 0.90)
-            cv2.rectangle(frame, (display_w//2 - 360, 138), (display_w//2 + 360, 190), p_color, 2)
-            cv2.putText(frame, f"PERFIL [TECLA P]: {prof['name']} - {prof['subtitle']}", (display_w//2 - 340, 172), cv2.FONT_HERSHEY_SIMPLEX, 0.54, p_color, 2, cv2.LINE_AA)
+            p_color = prof_colors.get(current_profile, (0, 255, 255))
+            sub_txt = f"NIVEL ACTIVO: {prof['name']} - {prof['subtitle']}"
+            (sw_t, _), _ = cv2.getTextSize(sub_txt, cv2.FONT_HERSHEY_SIMPLEX, 0.54, 1)
+            cv2.putText(frame, sub_txt, ((display_w - sw_t) // 2, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.54, p_color, 1, cv2.LINE_AA)
 
             # Botones kinéticos en pantalla
-            cv2.circle(frame, (120, 340), 55, (255, 180, 0), 3, cv2.LINE_AA)
-            cv2.putText(frame, "MANO IZQ", (72, 332), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 200, 50), 1, cv2.LINE_AA)
-            cv2.putText(frame, "SUBIR", (86, 358), cv2.FONT_HERSHEY_DUPLEX, 0.54, (255, 255, 255), 1, cv2.LINE_AA)
+            cv2.circle(frame, (120, 305), 52, (255, 180, 0), 3, cv2.LINE_AA)
+            cv2.putText(frame, "MANO IZQ", (76, 297), cv2.FONT_HERSHEY_SIMPLEX, 0.46, (255, 200, 50), 1, cv2.LINE_AA)
+            cv2.putText(frame, "SUBIR", (88, 322), cv2.FONT_HERSHEY_DUPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
 
-            cv2.circle(frame, (display_w - 120, 340), 55, (255, 180, 0), 3, cv2.LINE_AA)
-            cv2.putText(frame, "MANO DER", (display_w - 168, 332), cv2.FONT_HERSHEY_SIMPLEX, 0.48, (255, 200, 50), 1, cv2.LINE_AA)
-            cv2.putText(frame, "BAJAR", (display_w - 152, 358), cv2.FONT_HERSHEY_DUPLEX, 0.54, (255, 255, 255), 1, cv2.LINE_AA)
+            cv2.circle(frame, (display_w - 120, 305), 52, (255, 180, 0), 3, cv2.LINE_AA)
+            cv2.putText(frame, "MANO DER", (display_w - 166, 297), cv2.FONT_HERSHEY_SIMPLEX, 0.46, (255, 200, 50), 1, cv2.LINE_AA)
+            cv2.putText(frame, "BAJAR", (display_w - 150, 322), cv2.FONT_HERSHEY_DUPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
+
+            # Botón kinético de cambio de nivel a distancia (Brazo derecho horizontal)
+            lvl_prog = 0.0
+            cv2.circle(frame, (display_w - 120, 445), 56, p_color, 3, cv2.LINE_AA)
+            cv2.putText(frame, "BRAZO LADO", (display_w - 165, 437), cv2.FONT_HERSHEY_SIMPLEX, 0.42, p_color, 1, cv2.LINE_AA)
+            cv2.putText(frame, "NIVEL", (display_w - 146, 463), cv2.FONT_HERSHEY_DUPLEX, 0.52, (255, 255, 255), 1, cv2.LINE_AA)
 
             max_visible = 5
             start_idx = max(0, selected_idx - max_visible // 2)
@@ -632,17 +674,32 @@ def main():
             if end_idx - start_idx < max_visible:
                 start_idx = max(0, end_idx - max_visible)
 
+            song_boxes = []
             for i in range(start_idx, end_idx):
                 opt = menu_options[i]
                 is_sel = (i == selected_idx)
                 color = (0, 255, 120) if is_sel else (150, 150, 165)
                 prefix = "->  " if is_sel else "    "
                 draw_i = i - start_idx
-                oy = 230 + draw_i * 68
+                oy = 250 + draw_i * 62
+                song_boxes.append((i, display_w//2 - 320, oy - 40, display_w//2 + 320, oy + 14))
                 if is_sel:
-                    blend_rect_roi(frame, display_w//2 - 320, oy - 42, 640, 56, (30, 40, 60), 0.85)
-                    cv2.rectangle(frame, (display_w//2 - 320, oy - 42), (display_w//2 + 320, oy + 14), (0, 255, 120), 2)
-                cv2.putText(frame, prefix + opt['display'], (display_w//2 - 290, oy), cv2.FONT_HERSHEY_DUPLEX, 1.0, color, 2, cv2.LINE_AA)
+                    blend_rect_roi(frame, display_w//2 - 320, oy - 40, 640, 52, (30, 40, 60), 0.85)
+                    cv2.rectangle(frame, (display_w//2 - 320, oy - 40), (display_w//2 + 320, oy + 12), (0, 255, 120), 2)
+                cv2.putText(frame, prefix + opt['display'], (display_w//2 - 290, oy), cv2.FONT_HERSHEY_DUPLEX, 0.92, color, 2, cv2.LINE_AA)
+
+            # Manejo de click del mouse en niveles o canciones
+            if mouse_state['click'] is not None:
+                mx, my = mouse_state['click']
+                mouse_state['click'] = None
+                for idx_p, x1, y1, x2, y2 in pill_boxes:
+                    if x1 <= mx <= x2 and y1 <= my <= y2:
+                        current_profile_idx = idx_p
+                        current_profile = PROFILE_KEYS[current_profile_idx]
+                        floating_texts.add(f"NIVEL: {PROFILES[current_profile]['name']}", 40, 250, p_color, 1.1)
+                for idx_s, x1, y1, x2, y2 in song_boxes:
+                    if x1 <= mx <= x2 and y1 <= my <= y2:
+                        selected_idx = idx_s
 
             confirm_prog = 0.0
             if has_person:
@@ -650,6 +707,22 @@ def main():
                 l_up = check_left_arm_up(lm) and not check_right_arm_up(lm)
                 r_up = check_right_arm_up(lm) and not check_left_arm_up(lm)
                 both_up = check_left_arm_up(lm) and check_right_arm_up(lm)
+                r_side_level = check_right_arm_horizontal(lm) and not check_right_arm_up(lm) and not check_left_arm_horizontal(lm) and not check_left_arm_up(lm)
+
+                if r_side_level:
+                    if not menu_profile_lock:
+                        if menu_profile_arm_start is None:
+                            menu_profile_arm_start = current_time
+                        lvl_prog = min(1.0, (current_time - menu_profile_arm_start) / menu_profile_required)
+                        cv2.ellipse(frame, (display_w - 120, 445), (56, 56), -90, 0, int(360 * lvl_prog), (0, 255, 255), 5, cv2.LINE_AA)
+                        if lvl_prog >= 1.0:
+                            current_profile_idx = (current_profile_idx + 1) % len(PROFILE_KEYS)
+                            current_profile = PROFILE_KEYS[current_profile_idx]
+                            menu_profile_arm_start = None
+                            menu_profile_lock = True
+                else:
+                    menu_profile_arm_start = None
+                    menu_profile_lock = False
 
                 if both_up:
                     if menu_both_start is None: menu_both_start = current_time
@@ -696,7 +769,7 @@ def main():
             cv2.rectangle(frame, (display_w//2 - 300, display_h - 110), (display_w//2 + 300, display_h - 62), (255, 255, 255), 2)
             if confirm_prog > 0:
                 cv2.rectangle(frame, (display_w//2 - 296, display_h - 106), (display_w//2 - 296 + int(592 * confirm_prog), display_h - 66), (0, 255, 120), -1)
-            cv2.putText(frame, "AMBOS BRAZOS ARRIBA O ENTER = ¡JUGAR!", (display_w//2 - 250, display_h - 78), cv2.FONT_HERSHEY_DUPLEX, 0.68, (0, 0, 0) if confirm_prog > 0.5 else (255, 255, 255), 2, cv2.LINE_AA)
+            cv2.putText(frame, "AMBOS BRAZOS ARRIBA O ENTER = A JUGAR!", (display_w//2 - 250, display_h - 78), cv2.FONT_HERSHEY_DUPLEX, 0.68, (0, 0, 0) if confirm_prog > 0.5 else (255, 255, 255), 2, cv2.LINE_AA)
 
             # Barra informativa de Features avanzadas (todas desactivadas por defecto)
             feat_text = (
@@ -746,7 +819,17 @@ def main():
         elif key == ord('p') or key == 9:
             current_profile_idx = (current_profile_idx + 1) % len(PROFILE_KEYS)
             current_profile = PROFILE_KEYS[current_profile_idx]
-            floating_texts.add(f"PERFIL: {PROFILES[current_profile]['name']}", 40, 250, (0, 255, 255), 1.2)
+            floating_texts.add(f"NIVEL: {PROFILES[current_profile]['name']}", 40, 250, (0, 255, 255), 1.2)
+        elif ord('1') <= key <= ord('5'):
+            idx_num = key - ord('1')
+            if idx_num < len(PROFILE_KEYS):
+                current_profile_idx = idx_num
+                current_profile = PROFILE_KEYS[current_profile_idx]
+                floating_texts.add(f"NIVEL: {PROFILES[current_profile]['name']}", 40, 250, (0, 255, 255), 1.2)
+        elif show_menu and key in (81, 83):  # Flechas Izq/Der en Linux XCB para cambiar nivel
+            delta_p = -1 if key == 81 else 1
+            current_profile_idx = (current_profile_idx + delta_p) % len(PROFILE_KEYS)
+            current_profile = PROFILE_KEYS[current_profile_idx]
         elif key == ord('d'):
             act = FEATURES.toggle_duo_mode()
             floating_texts.add(f"MODO DUO: {'ACTIVADO' if act else 'DESACTIVADO'}", 40, 250, (0, 255, 255), 1.2)

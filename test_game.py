@@ -852,7 +852,38 @@ def run_regression_tests():
         with wave.open("asereje.wav", "rb") as wf:
             dur = wf.getnframes() / wf.getframerate()
         assert_true(dur < 230.0, f"asereje.wav debe tener la cola silenciosa recortada (<230s), mide {dur:.1f}s")
-    print("      -> Audio continuo, Limpiaparabrisas, Guitarra y Gesto Skip verificados OK!")
+
+    # 11. Anti-regresion: Esqueletos completos (9 keypoints) y consistencia ref->detector en POSES y COREOGRAFIAS
+    req_ref_keys = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST, L_HIP, R_HIP]
+    all_entries = [("CATALOGO", p) for p in POSES]
+    for song, steps in COREOGRAFIAS.items():
+        for stp in steps:
+            all_entries.append((f"COREO:{song}", stp))
+
+    for src, p in all_entries:
+        ref = p.get('ref', {})
+        for rk in req_ref_keys:
+            assert_true(rk in ref, f"{src} '{p['name']}' le falta keypoint {rk} en ref (esqueleto roto)")
+        if not p.get('dynamic') and not p.get('disabled'):
+            ref_lm = [MockLM(0.5, 0.5, 0.9) for _ in range(33)]
+            for k, (rx, ry) in ref.items():
+                ref_lm[k] = MockLM(rx, ry, 0.95)
+            ref_lm[L_EAR] = MockLM(ref[NOSE][0] - 0.05, ref[NOSE][1] - 0.01, 0.9)
+            ref_lm[R_EAR] = MockLM(ref[NOSE][0] + 0.05, ref[NOSE][1] - 0.01, 0.9)
+            chk = p['checks']
+            assert_true(chk['left_arm'](ref_lm) and chk['right_arm'](ref_lm),
+                        f"{src} '{p['name']}' su propio esqueleto de referencia no pasa su detector")
+
+    # 12. Anti-regresion: 5 Niveles con nombres claros (Ninos/Adultos/Flow) y cero texto no-ASCII en UI
+    assert_true('NINOS' in PROFILES['JUNIOR']['name'], "JUNIOR debe indicar claramente NINOS")
+    assert_true('ADULTOS' in PROFILES['CARDIO']['name'], "CARDIO debe indicar claramente ADULTOS")
+    src_ui = open("poses_locas.py", encoding="utf-8").read()
+    for ln_i, line_u in enumerate(src_ui.splitlines(), 1):
+        if ("cv2.putText(" in line_u or "floating_texts.add(" in line_u) and not line_u.strip().startswith("#"):
+            bad = [ch for ch in line_u if ord(ch) > 126]
+            assert_eq(len(bad), 0, f"poses_locas.py:{ln_i} contiene caracteres no-ASCII en UI: {bad}")
+
+    print("      -> Audio continuo, Coreografias completas, Niveles y UI ASCII verificados OK!")
 
 def run_calibration_tests():
     print("[6.5/7] Probando Sistema de Calibracion Pre-Juego (Centro -> T-Pose -> Brazos Arriba)...")

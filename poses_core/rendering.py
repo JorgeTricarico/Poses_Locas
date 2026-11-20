@@ -258,7 +258,7 @@ def get_animated_ref_points(pose_data, t):
     # =================================================================
     # 5. MUEVE LA CABEZA (NODDING Y TILT RÍTMICO)
     # =================================================================
-    elif 'Cabeza' in name:
+    elif 'Mueve la Cabeza' in name:
         nod_x = math.sin(t * 6.0) * 0.08
         nod_y = abs(math.cos(t * 6.0)) * 0.03
         pts['nose'] = (0.50 + nod_x, 0.14 + nod_y)
@@ -455,7 +455,7 @@ def draw_intent_arrows_in_box(frame, pose_data, box_x, box_y, box_w, box_h, t):
             cv2.arrowedLine(frame, (cx, y_arr), (box_x + 18, y_arr), col, 3, tipLength=0.35)
             cv2.putText(frame, "<< PASO IZQ", (box_x + 12, y_arr - 8), cv2.FONT_HERSHEY_DUPLEX, 0.40, col, 1, cv2.LINE_AA)
 
-    elif 'Cabeza' in name:
+    elif 'Mueve la Cabeza' in name:
         y_head = box_y + int(box_h * 0.16)
         nod_val = math.sin(t * 6.0)
         if nod_val > 0.08:
