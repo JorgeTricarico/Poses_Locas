@@ -846,12 +846,17 @@ def run_regression_tests():
     skip_side[R_WRIST] = MockLM(0.85, 0.32)
     assert_true(not check_gesture_next(skip_side), "Giro de perfil no debe activar skip accidental")
 
-    # 10. Anti-regresion: Audio sin cola de silencio prolongada en Modo Libre
+    # 10. Anti-regresion: Audio sin cola de silencio prolongada y Macarena real vocal
     if os.path.exists("asereje.wav"):
         import wave
         with wave.open("asereje.wav", "rb") as wf:
             dur = wf.getnframes() / wf.getframerate()
         assert_true(dur < 230.0, f"asereje.wav debe tener la cola silenciosa recortada (<230s), mide {dur:.1f}s")
+    if os.path.exists("macarena.wav"):
+        import wave
+        with wave.open("macarena.wav", "rb") as wf:
+            dur_m = wf.getnframes() / wf.getframerate()
+        assert_true(215.0 <= dur_m <= 230.0, f"macarena.wav debe corresponder a la pista vocal de estudio (~222s), mide {dur_m:.1f}s")
 
     # 11. Anti-regresion: Esqueletos completos (9 keypoints) y consistencia ref->detector en POSES y COREOGRAFIAS
     req_ref_keys = [NOSE, L_SHOULDER, R_SHOULDER, L_ELBOW, R_ELBOW, L_WRIST, R_WRIST, L_HIP, R_HIP]

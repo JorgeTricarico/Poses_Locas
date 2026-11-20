@@ -27,8 +27,6 @@ from .detectors import (
 # =====================================================================
 SONG_BPM = {
     'macarena.wav': 103,
-    'macarena_real.wav': 103,
-    'macarena_vocal.wav': 103,
     'asereje.wav': 106,
     'ymca.wav': 127,
     'danza_kuduro.wav': 130,
@@ -420,5 +418,3 @@ COREOGRAFIAS = {
         }
     ]
 }
-COREOGRAFIAS['macarena_real.wav'] = COREOGRAFIAS['macarena.wav']
-COREOGRAFIAS['macarena_vocal.wav'] = COREOGRAFIAS['macarena.wav']
